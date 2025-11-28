@@ -34,7 +34,17 @@ export class ApiService {
     constructor(private http: HttpClient) { }
 
     solveSystem(request: SolveRequest): Observable<SolveResponse> {
-        console.log('ApiService: Sending solve request to', `${this.apiUrl}/solve`, request);
+      request.matrix = request.matrix.map(row =>
+        row.map(cell => cell === '' ? '0' : cell)
+      );
+      request.constants = request.constants.map(cell =>
+        cell === '' ? '0' : cell
+      );
+      request.initialGuess = request.initialGuess!.map(cell =>
+        cell === '' ? '0' : cell
+      );
+
+      console.log('ApiService: Sending solve request to', `${this.apiUrl}/solve`, request);
         return this.http.post<SolveResponse>(`${this.apiUrl}/solve`, request);
     }
 }
