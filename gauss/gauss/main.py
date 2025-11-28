@@ -3,7 +3,6 @@ from pyexpat.errors import messages
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import time
-
 # Import your existing solver modules
 from .Itrativemethods.ItrativeMethods import ItrativeMethods
 from .linear_system import LinearSystem
@@ -22,7 +21,16 @@ from .chelosky_crout import Crout_LU, Chelosky_LU
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Angular frontend
 
+def convert_sympy(obj):
+    from sympy import Basic
 
+    if isinstance(obj, Basic):     # Single SymPy expression
+        return str(obj)
+    if isinstance(obj, list):      # List of expressions
+        return [convert_sympy(x) for x in obj]
+    if isinstance(obj, dict):      # Dict with expressions
+        return {k: convert_sympy(v) for k, v in obj.items()}
+    return obj
 @app.route('/api/solve', methods=['POST'])
 def solve_system():
     try:
@@ -39,22 +47,27 @@ def solve_system():
         initial_guess_str = data.get('initialGuess', [])
         max_iterations = data.get('maxIterations', 50)
         tolerance = float(data.get('tolerance', 0.00001))
-
+        symbolic  = data.get('symbolic', False)
         n = len(matrix_str)
-        matrix = [[float(val) if val.strip() else 0.0 for val in row] for row in matrix_str]
-        constants = [float(val) if val.strip() else 0.0 for val in constants_str]
-        augmented = [matrix[i][:] + [constants[i]] for i in range(n)]
-
-
-        rankbro = SolutionType(augmented).gaussian_elimination()
-        if (rankbro == 1):
-            message = "INCONSISTENT"
-        elif (rankbro == 2):
-            message = "INFINITE NUMBER OF SOLUTIONS"
-
+        if not symbolic:
+            matrix = [[float(val) if val.strip() else 0.0 for val in row] for row in matrix_str]
+            constants = [float(val) if val.strip() else 0.0 for val in constants_str]
+            augmented = [matrix[i][:] + [constants[i]] for i in range(n)]
         else:
-            message = "Unique Solution exists"
+            matrix =matrix_str
+            constants = constants_str
+            augmented = [matrix[i][:] + [constants[i]] for i in range(n)]
+        if not symbolic:
+            rankbro = SolutionType(augmented).gaussian_elimination()
+            if (rankbro == 1):
+                message = "INCONSISTENT"
+            elif (rankbro == 2):
+                message = "INFINITE NUMBER OF SOLUTIONS"
 
+            else:
+                message = "Unique Solution exists"
+        else:
+            message = "works"
         solution = None
         iterations = None
         steps = []  # This will now hold full step strings
@@ -113,18 +126,25 @@ def solve_system():
             solver = ItrativeMethods(n, matrix, constants, initial_guess,max_iterations , tolerance, precision)
 
             if method == 'jacobi':
-                solver.print_iteration_formulas("jacobi")
-                solution = solver.jacobi()
-
+                if not symbolic:
+                    solver.print_iteration_formulas("jacobi")
+                    solution = solver.jacobi()
+                    steps = solver.getAnswer()
+                else:
+                    solution = solver.symbolic_iterations(max_iterations, method)
             else:
-                solution = solver.seidel()
-
-            steps = solver.getAnswer()  # ← Now this is correct!
-
+                if not symbolic:
+                    solution = solver.seidel()
+                    steps = solver.getAnswer()
+                else:
+                    solution = solver.symbolic_iterations(max_iterations, method)
         execution_time = (time.time() - start_time)*1000
 
-        if solution is not None:
+        if solution is not None and not symbolic:
             solution_str = [f"{val:.{precision}g}" for val in solution]
+        elif solution is not None and symbolic:
+            solution_str = convert_sympy(solution)
+            steps = ''
         else:
             solution_str = None
 
@@ -137,7 +157,8 @@ def solve_system():
 
         if iterations is not None:
             response['iterations'] = iterations
-
+        if symbolic:
+            response = convert_sympy(response)
         return jsonify(response), 200
 
     except ValueError as ve:

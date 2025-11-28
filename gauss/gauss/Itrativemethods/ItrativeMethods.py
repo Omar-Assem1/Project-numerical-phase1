@@ -56,7 +56,7 @@ class ItrativeMethods:
 
     def error(self, X, X_new):
         
-        errors = [abs((X_new[i] - X[i]) / X_new[i]) for i in range(len(X))]
+        errors = [abs((X_new[i] - X[i]) / max(X_new[i],1e-10)) for i in range(len(X))]
         return errors
 
     def round_sig(self, x):
