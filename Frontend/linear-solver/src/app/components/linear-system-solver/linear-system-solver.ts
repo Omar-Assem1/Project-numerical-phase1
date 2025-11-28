@@ -124,10 +124,12 @@ export class LinearSystemSolverComponent implements OnInit, OnDestroy {
           this.currentStep = 0;
         }
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         this.errorMessage = error.error?.message || 'An error occurred';
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
