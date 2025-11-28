@@ -1,4 +1,6 @@
 # classes_for_gauss_jordan/rref_solver.py
+from decimal import Context
+
 class RREFSolver:
     def __init__(self, rref_matrix, rank, n_vars, pivot_positions, precision=6):
         self.M = rref_matrix

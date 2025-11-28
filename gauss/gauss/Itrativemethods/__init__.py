@@ -1,1 +1,1 @@
-from .ItrativeMethods import IterativeMethods
+from .ItrativeMethods import ItrativeMethods

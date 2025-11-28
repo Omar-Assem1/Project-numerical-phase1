@@ -2,6 +2,7 @@
 import math
 from typing import List
 from .LUdecompose import LUDecomposer
+from decimal import Context
 
 
 class LUSolver:
@@ -11,15 +12,11 @@ class LUSolver:
         self.step_strings = []
         self._current = []
 
-    def round_sig(self, x: float) -> float:
-        if x == 0:
-            return 0.0
-        try:
-            order = math.floor(math.log10(abs(x)))
-            factor = 10 ** (order - self.sig + 1)
-            return round(x / factor) * factor
-        except:
-            return x
+    def round_sig(self, x):
+        # Create a context with the desired precision
+        ctx = Context(prec= self.sig)
+        # Normalize applies the precision to the number
+        return float(ctx.create_decimal(x).normalize())
 
     def _flush(self):
         if self._current:

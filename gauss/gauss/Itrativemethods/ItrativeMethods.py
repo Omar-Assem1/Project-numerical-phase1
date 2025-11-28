@@ -1,181 +1,248 @@
-# Itrativemethods/IterativeMethods.py
 import math
-from typing import List, Tuple, Optional
+from decimal import Context
 
+class ItrativeMethods:
 
-class IterativeMethods:
-    def __init__(self, n: int, A: List[List[float]], b: List[float],
-                 X0: List[float], max_iter: int = 50, tol: float = 1e-6, precision: int = 6):
-        self.n = n
-        self.A = [row[:] for row in A]
-        self.b = b[:]
-        self.X0 = X0[:]
-        self.max_iter = max_iter
-        self.tol = tol
-        self.precision = precision
+    def __init__(self, n, mat, ansV, X, it, tol, precision):
+        self.__n = n
+        self.__mat = mat
+        self.__ansV = ansV
+        self.__X = X
+        self.__it = it
+        self.__tol = tol
+        self.__precision = precision
+        self.__numberOfIterations = 0
+        self.__converge = False
+        self.__answer = []
 
-        # Step tracking
-        self.step_strings = []
-        self._current = []
+    def setMatrix(self, mat, ansV):
+        self.__mat = mat
+        self_ansV = ansV
 
-    def round_sig(self, x: float, sig: int = None) -> float:
-        if sig is None:
-            sig = self.precision
-        if abs(x) < 1e-20:
-            return 0.0
-        try:
-            order = math.floor(math.log10(abs(x)))
-            factor = 10 ** (order - sig + 1)
-            return round(x / factor) * factor
-        except:
-            return x
+    def setIt(self, it):
+        self.__it = it
 
-    def _flush(self):
-        if self._current:
-            self.step_strings.append("\n".join(self._current))
-            self._current = []
+    def setTol(self, tol):
+        self.__tol = tol
 
-    def _print_vec(self, name: str, vec: List[float]):
-        rounded = [self.round_sig(v) for v in vec]
-        self._current.append(f"{name}: [{'  '.join(f'{v:12.6g}' for v in rounded)}]")
+    def __setConvergence(self, converge):
+        self.__converge = converge
 
-    def _print_table_header(self):
-        header = f"{'Iter':>4}  | " + " ".join(f"x{i+1:>12}" for i in range(self.n)) + f"  | {'Max Error':>12}"
-        self._current.append(header)
-        self._current.append("-" * (6 + 15 * self.n + 15))
+    def __setNumberOfIterations(self, numberOfIterations):
+        self.__numberOfIterations = numberOfIterations
 
-    def _add_iteration_row(self, k: int, X: List[float], error: float):
-        X_disp = [self.round_sig(x) for x in X]
-        err_disp = self.round_sig(error) if error > 0 else 0.0
-        row = f"{k:>4}  | " + " ".join(f"{x:12.6g}" for x in X_disp) + f"  | {err_disp:12.6g}"
-        self._current.append(row)
+    def getMatrix(self):
+        return self.__mat
+
+    def getIterations(self):
+        return self.__it
+
+    def getTolerance(self):
+        return self.__tol
+
+    def getConvergence(self):
+        return self.__converge
+
+    def getNumberOfIterations(self):
+        return self.__numberOfIterations
+
+    def getAnswer(self):
+        return self.__answer
+
+    def reset(self):
+        self.__numberOfIterations = 0
+        self.__converge = False
+        self.__answer = []
+
+    def error(self, X, X_new):
+        
+        errors = [abs((X_new[i] - X[i]) / X_new[i]) for i in range(len(X))]
+        return errors
+
+    def round_sig(self, x):
+        # Create a context with the desired precision
+        ctx = Context(prec=self.__precision)
+        # Normalize applies the precision to the number
+        return float(ctx.create_decimal(x).normalize())
 
     def _check_diagonal_dominance(self):
-        self._current.append("Diagonal dominance check:")
+        ans = "Diagonal dominance check:\n"
         dominant = True
-        for i in range(self.n):
-            diag = abs(self.A[i][i])
-            off = sum(abs(self.A[i][j]) for j in range(self.n) if j != i)
+        for i in range(self.__n):
+            diag = abs(self.__mat[i][i])
+            off = sum(abs(self.__mat[i][j]) for j in range(self.__n) if j != i)
             status = "STRICT" if diag > off else "WEAK" if diag >= off else "NO"
             if diag <= off:
                 dominant = False
-            self._current.append(f"  Row {i+1}: |a{i+1}{i+1}| = {diag:.6g} vs Σ|others| = {off:.6g} → {status}")
-        self._current.append("→ Strictly diagonally dominant → convergence guaranteed!" if dominant else
-                             "→ Not strictly dominant → convergence not guaranteed")
-        self._current.append("")
+            ans += (f"  Row {i + 1}: |a{i + 1}{i + 1}| = {diag:.6g} vs Σ|others| = {off:.6g} → {status}\n")
+        ans += ("→ Strictly diagonally dominant → convergence guaranteed!\n" if dominant else
+                "→ Not strictly dominant → convergence not guaranteed\n")
+        self.__answer.append(ans)
 
-    def jacobi(self) -> Tuple[List[float], int]:
-        self.step_strings = []
-        self._current = [
-            "=" * 85,
-            "                 JACOBI ITERATIVE METHOD",
-            "=" * 85,
-            f"Precision: {self.precision} sig. figs | Tolerance: {self.tol:.2e} | Max iter: {self.max_iter}",
-            "",
-            "Initial guess:",
-        ]
-        self._print_vec("X⁽⁰⁾", self.X0)
+    def print_iteration_formulas(self, method):
+        n = self.__n
+        ans = (f"Formulas for {method} method:\n")
+        for i in range(n):
+            formula = f"x{i + 1}(new) = "
+            s = self.__ansV[i]
+            terms = []
+            for j in range(n):
+                if i == j:
+                    continue
+                coef = self.__mat[i][j]
+                var_type = "old" if method == "jacobi" else ("new" if j < i else "old")
+                terms.append(f"{'-' if coef < 0 else '+'} {abs(coef)}x{j + 1}({var_type})")
+            formula += f"({s} {' '.join(terms)}) / {self.__mat[i][i]}\n"
+            ans += formula
+        self.__answer.append(ans)
+
+    def jacobi(self):
+        n = self.__n
+        X = self.__X.copy()
+        X_new = [0.0] * n  # jacobi
+
+        for i in range(n):
+            if self.__mat[i][i] == 0:
+                self.__answer.append(f"this method can't be used A[{i}][{i}] == zero")
+                return
+
         self._check_diagonal_dominance()
-        self._current.append("Starting Jacobi iterations...")
-        self._print_table_header()
-        self._flush()
 
-        X_old = self.X0[:]
-        X_new = [0.0] * self.n
+        for iterations in range(self.__it):
+            self.__numberOfIterations = iterations + 1
+            X_old = X.copy()
+            for i in range(n):
+                calculations = self.round_sig(self.__ansV[i])
+                for j in range(n):
+                    if i == j: continue
+                    sub_value = self.round_sig(self.__mat[i][j] * X[j])
+                    calculations -= sub_value
+                    calculations = self.round_sig(calculations)
+                X_new[i] = self.round_sig(calculations / self.__mat[i][i])  # jacobi
+            X = X_new.copy()  # jacobi
 
-        for k in range(1, self.max_iter + 1):
-            for i in range(self.n):
-                sigma = sum(self.A[i][j] * X_old[j] for j in range(self.n) if j != i)
-                X_new[i] = (self.b[i] - sigma) / self.A[i][i]
-                X_new[i] = self.round_sig(X_new[i])
+            ans = f"iteration {self.__numberOfIterations}: {X}\n"
+            e = self.error(X_old, X)
+            ans += f"relative error: {e}\n"
+            self.__answer.append(ans)
+            if max(e) < self.__tol:
+                self.__converge = True
+                ans = f"Jacobi Solution: {X}\n"
+                ans += f"Converged: {self.getConvergence()}, Iterations: {self.getNumberOfIterations()}\n"
+                self.__answer.append(ans)
+                break
+        ans = f"Jacobi Solution: {X}\n"
+        ans += f"Converged: {self.getConvergence()}, Iterations: {self.getNumberOfIterations()}\n"
+        self.__answer.append(ans)
+        return X
 
-            error = max(abs(X_new[i] - X_old[i]) for i in range(self.n))
-            self._add_iteration_row(k, X_new, error)
+    def seidel(self):
 
-            if error < self.tol:
-                self._current = [
-                    "CONVERGED!",
-                    "",
-                    "=" * 85,
-                    f" JACOBI CONVERGED IN {k} ITERATIONS",
-                    "=" * 85,
-                ]
-                self._print_vec("Final solution", X_new)
-                for i, val in enumerate(X_new, 1):
-                    self._current.append(f"x{i} = {self.round_sig(val):.10g}")
-                self._current.append("")
-                self._flush()
-                return X_new, k
+        n = self.__n
+        X = self.__X.copy()
 
-            self._flush()
-            X_old = X_new[:]
+        for i in range(n):
+            if self.__mat[i][i] == 0:
+                self.__answer.append(f"this method can't be used A[{i}][{i}] == zero\n")
+                return
 
-        # Not converged
-        self._current = [
-            "DID NOT CONVERGE within max iterations",
-            "",
-            "=" * 85,
-            f" JACOBI – LAST APPROXIMATION (after {self.max_iter} iter)",
-            "=" * 85,
-        ]
-        self._print_vec("Last X", X_new)
-        self._flush()
-        return X_new, self.max_iter
-
-    def gauss_seidel(self) -> Tuple[List[float], int]:
-        self.step_strings = []
-        self._current = [
-            "=" * 85,
-            "              GAUSS-SEIDEL ITERATIVE METHOD",
-            "=" * 85,
-            f"Precision: {self.precision} sig. figs | Tolerance: {self.tol:.2e} | Max iter: {self.max_iter}",
-            "",
-            "Initial guess:",
-        ]
-        self._print_vec("X⁽⁰⁾", self.X0)
         self._check_diagonal_dominance()
-        self._current.append("Starting Gauss-Seidel iterations...")
-        self._print_table_header()
-        self._flush()
 
-        X = self.X0[:]
+        for iterations in range(self.__it):
+            self.__numberOfIterations = iterations + 1
+            X_old = X.copy()
+            for i in range(n):
+                calculations = self.round_sig(self.__ansV[i])
+                for j in range(n):
+                    if i == j: continue
+                    sub_value = self.round_sig(self.__mat[i][j] * X[j])
+                    calculations -= sub_value
+                    calculations = self.round_sig(calculations)
+                X[i] = self.round_sig(calculations / self.__mat[i][i])  # seidel
 
-        for k in range(1, self.max_iter + 1):
-            X_old = X[:]
+            ans = f"iteration {self.__numberOfIterations}: {X}\n"
+            e = self.error(X_old, X)
+            ans += f"relative error: {e}\n"
+            self.__answer.append(ans)
+            if max(e) <self.__tol:
+                self.__converge = True
+                ans = f"Gauss-Seidel Solution: {X}\n"
+                ans += f"Converged: {self.getConvergence()}, Iterations: {self.getNumberOfIterations()}\n"
+                self.__answer.append(ans)
+                break
+        ans = f"Gauss-Seidel Solution: {X}\n"
+        ans += f"Converged: {self.getConvergence()}, Iterations: {self.getNumberOfIterations()}\n"
+        self.__answer.append(ans)
+        return X
 
-            for i in range(self.n):
-                sigma = sum(self.A[i][j] * X[j] for j in range(i)) + \
-                        sum(self.A[i][j] * X_old[j] for j in range(i + 1, self.n))
-                X[i] = (self.b[i] - sigma) / self.A[i][i]
-                X[i] = self.round_sig(X[i])
+    def symbolic_iterations(self, iterations, method="jacobi"):
+        import sympy as sp
 
-            error = max(abs(X[i] - X_old[i]) for i in range(self.n))
-            self._add_iteration_row(k, X, error)
+        n = self.__n
 
-            if error < self.tol:
-                self._current = [
-                    "CONVERGED!",
-                    "",
-                    "=" * 85,
-                    f" GAUSS-SEIDEL CONVERGED IN {k} ITERATIONS",
-                    "=" * 85,
-                ]
-                self._print_vec("Final solution", X)
-                for i, val in enumerate(X, 1):
-                    self._current.append(f"x{i} = {self.round_sig(val):.10g}")
-                self._current.append("")
-                self._flush()
-                return X, k
+        X = sp.symbols("x1:%d" % (n + 1))
 
-            self._flush()
+        A = [[sp.sympify(self.__mat[i][j]) for j in range(n)] for i in range(n)]
+        b = [sp.sympify(self.__ansV[i]) for i in range(n)]
 
-        self._current = [
-            "DID NOT CONVERGE within max iterations",
-            "",
-            "=" * 85,
-            f" GAUSS-SEIDEL – LAST APPROXIMATION (after {self.max_iter} iter)",
-            "=" * 85,
-        ]
-        self._print_vec("Last X", X)
-        self._flush()
-        return X, self.max_iter
+        for i in range(n):
+            if A[i][i] == 0:
+                print(f"this method can't be used A[{i}][{i}] == zero\n")
+                return
+        X_current = list(X)
+
+        for _ in range(iterations):
+            X_new = [None] * n
+            for i in range(n):
+                expr = b[i]
+                for j in range(n):
+                    if i == j:
+                        continue
+                    if method == "jacobi":
+                        expr -= A[i][j] * X_current[j]
+                    else:
+                        expr -= A[i][j] * (X_new[j] if j < i else X_current[j])
+
+                X_new[i] = sp.simplify(expr / A[i][i])
+
+            X_current = X_new.copy()
+
+        return X_current
+
+#
+# A = [
+#     [4, -1, 0],
+#     [-1, 0, -1],
+#     [0, -1, 3]
+# ]
+# b = [15, 10, 10]
+# X = [1, 1, 1]
+#
+# solver = ItrativeMethods(3, A, b, X, it=25, tol=1e-4, precision=4)
+#
+# print("===== Jacobi Method =====")
+# solver.print_iteration_formulas("jacobi")
+# X_jacobi = solver.jacobi()
+# for line in solver.getAnswer():
+#     print(line, end='')
+#
+# solver.reset()
+#
+# print("\n===== Gauss-Seidel Method =====")
+# solver.print_iteration_formulas("seidel")
+# X_seidel = solver.seidel()
+# for line in solver.getAnswer():
+#     print(line, end='')
+#
+# # A = [["a","b","c"],
+# #      ["d","e","f"],
+# #      ["g","h","i"]]
+#
+# # b = ["j","k","l"]
+# # X = ["x1","x2","x3"]
+#
+# # solver = ItrativeMethods(3, A, b, X, it=5, tol=1e-4, precision=4)
+#
+# # print("Jacobi:", solver.symbolic_iterations(2, method="jacobi"))
+# # print("Gauss-Seidel:", solver.symbolic_iterations(2, method="seidel"))
+

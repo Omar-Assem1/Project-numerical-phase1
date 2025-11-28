@@ -1,11 +1,13 @@
+from pyexpat.errors import messages
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import time
 
 # Import your existing solver modules
-from .Itrativemethods.ItrativeMethods import IterativeMethods
+from .Itrativemethods.ItrativeMethods import ItrativeMethods
 from .linear_system import LinearSystem
-
+from .rank import SolutionType
 from .classes.forward_eliminator import ForwardEliminator
 from .classes.forward_eliminator_scaling import ForwardEliminatorScaling
 from .classes.system_solver import SystemSolver
@@ -36,18 +38,28 @@ def solve_system():
         lu_form = data.get('luForm', 'doolittle')
         initial_guess_str = data.get('initialGuess', [])
         max_iterations = data.get('maxIterations', 50)
-        tolerance = data.get('tolerance', 0.00001)
+        tolerance = float(data.get('tolerance', 0.00001))
 
         n = len(matrix_str)
         matrix = [[float(val) if val.strip() else 0.0 for val in row] for row in matrix_str]
         constants = [float(val) if val.strip() else 0.0 for val in constants_str]
         augmented = [matrix[i][:] + [constants[i]] for i in range(n)]
 
+
+        rankbro = SolutionType(augmented).gaussian_elimination()
+        if (rankbro == 1):
+            message = "INCONSISTENT"
+        elif (rankbro == 2):
+            message = "INFINITE NUMBER OF SOLUTIONS"
+
+        else:
+            message = "Unique Solution exists"
+
         solution = None
         iterations = None
         steps = []  # This will now hold full step strings
 
-        if method == 'gauss-elimination':
+        if method == 'gauss-elimination' and not(message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
             if scaling:
                 elim = ForwardEliminatorScaling(augmented.copy(), precision)
             else:
@@ -62,7 +74,7 @@ def solve_system():
             # Combine all step strings
             steps = elim.step_strings + solver.step_strings
 
-        elif method == 'gauss-jordan':
+        elif method == 'gauss-jordan' and not(message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
             if scaling:
                 elim = GaussJordanEliminatorScaling(augmented.copy(), precision)
             else:
@@ -73,11 +85,10 @@ def solve_system():
 
             solver = RREFSolver(rref, rank, n, pivots, precision)
             solution = solver.solve()
-
             steps = elim.step_strings + solver.step_strings
 
 
-        elif method == 'lu-decomposition':
+        elif method == 'lu-decomposition'and not(message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
 
             if lu_form == 'doolittle':
 
@@ -99,27 +110,18 @@ def solve_system():
 
         elif method in ['jacobi', 'gauss-seidel']:
             initial_guess = [float(val) if val.strip() else 0.0 for val in initial_guess_str]
-            solver = IterativeMethods(
-                n=n,
-                A=matrix,
-                b=constants,
-                X0=initial_guess,
-                max_iter=max_iterations,
-                tol=tolerance,
-                precision=precision
-            )
+            solver = ItrativeMethods(n, matrix, constants, initial_guess,max_iterations , tolerance, precision)
 
             if method == 'jacobi':
-                solution, iterations = solver.jacobi()
+                solver.print_iteration_formulas("jacobi")
+                solution = solver.jacobi()
+
             else:
-                solution, iterations = solver.gauss_seidel()
+                solution = solver.seidel()
 
-            steps = solver.step_strings  # ← Now this is correct!
+            steps = solver.getAnswer()  # ← Now this is correct!
 
-        else:
-            return jsonify({'error': 'Invalid method'}), 400
-
-        execution_time = time.time() - start_time
+        execution_time = (time.time() - start_time)*1000
 
         if solution is not None:
             solution_str = [f"{val:.{precision}g}" for val in solution]
@@ -128,8 +130,9 @@ def solve_system():
 
         response = {
             'solution': solution_str,
-            'executionTime': f"{execution_time:.6f}s",
+            'executionTime': f"{execution_time:.10f}m",
             'steps': steps if step_by_step else [],
+            'message': message,
         }
 
         if iterations is not None:

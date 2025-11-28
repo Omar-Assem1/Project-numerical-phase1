@@ -1,5 +1,6 @@
 import math
 
+from decimal import Context
 
 class ForwardEliminator:
     """Performs Gaussian elimination with partial pivoting and records all steps"""
@@ -16,12 +17,11 @@ class ForwardEliminator:
         # Temporary buffer for the current step
         self._current_step = []
 
-    def round_sig(self, x, sig):
-        if x == 0:
-            return 0.0
-        order = math.floor(math.log10(abs(x)))
-        factor = 10 ** (order - sig + 1)
-        return round(x / factor) * factor
+    def round_sig(self, x):
+        # Create a context with the desired precision
+        ctx = Context(prec=self.precision)
+        # Normalize applies the precision to the number
+        return float(ctx.create_decimal(x).normalize())
 
     def _flush_step(self):
         """Join the temporary buffer into one string and store it"""
@@ -34,7 +34,7 @@ class ForwardEliminator:
         if msg:
             self._current_step.append(f"{msg}:")
         for i, r in enumerate(self.M):
-            row_str = "  ".join(f"{self.round_sig(x, self.precision):12.6g}" for x in r)
+            row_str = "  ".join(f"{self.round_sig(x):12.6g}" for x in r)
             self._current_step.append(f"R{i + 1}: {row_str}")
         self._current_step.append("")
 
@@ -49,7 +49,7 @@ class ForwardEliminator:
             "Initial Matrix:"
         ]
         for i, r in enumerate(self.M):
-            row_str = "  ".join(f"{self.round_sig(x, self.precision):12.6g}" for x in r)
+            row_str = "  ".join(f"{self.round_sig(x):12.6g}" for x in r)
             header.append(f"R{i + 1}: {row_str}")
         header.append("")
         self.step_strings.append("\n".join(header))
@@ -80,7 +80,7 @@ class ForwardEliminator:
                 self._flush_step()
 
             pivot = self.M[row][col]
-            pivot_rounded = self.round_sig(pivot, self.precision)
+            pivot_rounded = self.round_sig(pivot)
 
             # Eliminate below
             for i in range(row + 1, self.n):
@@ -93,12 +93,12 @@ class ForwardEliminator:
                 numerator = self.M[i][col]
                 denominator = self.M[row][col]
                 factor = numerator / denominator
-                factor_rounded = self.round_sig(factor, self.precision)
+                factor_rounded = self.round_sig(factor)
 
                 self._current_step.append(f"--- Step {step_count}: Row{i + 1} -= factor × Row{row + 1} ---")
                 self._current_step.append(f"Factor = M[{i + 1}][{col + 1}] / M[{row + 1}][{col + 1}]")
                 self._current_step.append(
-                    f"       = {self.round_sig(numerator, self.precision)} / {self.round_sig(denominator, self.precision)}")
+                    f"       = {self.round_sig(numerator)} / {self.round_sig(denominator)}")
                 self._current_step.append(f"       = {factor_rounded}")
                 self._current_step.append(f"Operation: Row{i + 1} = Row{i + 1} - ({factor_rounded}) × Row{row + 1}")
                 self._current_step.append("-" * 75)
@@ -110,10 +110,10 @@ class ForwardEliminator:
                     product = factor_rounded * pivot_row_val
                     new_val = old_val - product
 
-                    old_val_r = self.round_sig(old_val, self.precision)
-                    pivot_row_val_r = self.round_sig(pivot_row_val, self.precision)
-                    product_r = self.round_sig(product, self.precision)
-                    new_val_r = self.round_sig(new_val, self.precision)
+                    old_val_r = self.round_sig(old_val )
+                    pivot_row_val_r = self.round_sig(pivot_row_val )
+                    product_r = self.round_sig(product )
+                    new_val_r = self.round_sig(new_val )
 
                     if j == col:
                         self._current_step.append(
@@ -140,7 +140,7 @@ class ForwardEliminator:
             "Final Echelon Matrix:"
         ]
         for i, r in enumerate(self.M):
-            row_str = "  ".join(f"{self.round_sig(x, self.precision):12.6g}" for x in r)
+            row_str = "  ".join(f"{self.round_sig(x ):12.6g}" for x in r)
             final.append(f"R{i + 1}: {row_str}")
         final.append("")
         self.step_strings.append("\n".join(final))

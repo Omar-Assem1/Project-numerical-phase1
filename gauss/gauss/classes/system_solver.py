@@ -1,4 +1,5 @@
 import math
+from decimal import Context
 
 class SystemSolver:
     """Back substitution — one big string per variable solved"""
@@ -12,13 +13,11 @@ class SystemSolver:
         self.step_strings = []
         self._current = []
 
-    def round_sig(self, x, sig):
-        if x == 0:
-            return 0.0
-        order = math.floor(math.log10(abs(x)))
-        factor = 10 ** (order - sig + 1)
-        return round(x / factor) * factor
-
+    def round_sig(self, x):
+        # Create a context with the desired precision
+        ctx = Context(prec=self.precision)
+        # Normalize applies the precision to the number
+        return float(ctx.create_decimal(x).normalize())
     def _flush(self):
         if self._current:
             self.step_strings.append("\n".join(self._current))
@@ -42,7 +41,7 @@ class SystemSolver:
                     "=" * 75,
                     "NO SOLUTION – System is inconsistent",
                     "=" * 75,
-                    f"Row {i + 1} → 0 = {self.round_sig(self.M[i][self.n], self.precision)}"
+                    f"Row {i + 1} → 0 = {self.round_sig(self.M[i][self.n])}"
                 ]
                 self._flush()
                 return None
@@ -78,14 +77,14 @@ class SystemSolver:
             # Original equation
             eq_parts = []
             for j in range(self.n):
-                coef = self.round_sig(row[j], self.precision)
+                coef = self.round_sig(row[j])
                 if abs(coef) > 1e-10:
                     if not eq_parts:
                         eq_parts.append(f"{coef}·x{j + 1}")
                     else:
                         sign = "+" if coef >= 0 else "-"
                         eq_parts.append(f" {sign} {abs(coef)}·x{j + 1}")
-            rhs = self.round_sig(row[self.n], self.precision)
+            rhs = self.round_sig(row[self.n])
             self._current.append(f"From Row {i + 1}:")
             self._current.append(f"  {' '.join(eq_parts)} = {rhs}")
             self._current.append("")
@@ -94,23 +93,23 @@ class SystemSolver:
             known_sum = 0.0
             sum_details = []
             for j in range(i + 1, self.n):
-                coef = self.round_sig(row[j], self.precision)
+                coef = self.round_sig(row[j])
                 if abs(coef) > 1e-10:
                     term = coef * x[j]
-                    term_r = self.round_sig(term, self.precision)
-                    sum_details.append(f"({coef} × {self.round_sig(x[j], self.precision)}) = {term_r}")
+                    term_r = self.round_sig(term)
+                    sum_details.append(f"({coef} × {self.round_sig(x[j])}) = {term_r}")
                     known_sum += term_r
 
-            diagonal = self.round_sig(row[i], self.precision)
+            diagonal = self.round_sig(row[i])
 
             if sum_details:
                 self._current.append("Substitute known values:")
                 self._current.append("  Sum of known terms = " + " + ".join(sum_details))
-                self._current.append(f"                     = {self.round_sig(known_sum, self.precision)}")
+                self._current.append(f"                     = {self.round_sig(known_sum)}")
                 self._current.append("")
                 self._current.append(f"Isolate x{i + 1}:")
-                self._current.append(f"  {diagonal}·x{i + 1} = {rhs} − {self.round_sig(known_sum, self.precision)}")
-                numerator_r = self.round_sig(rhs + (-known_sum), self.precision)
+                self._current.append(f"  {diagonal}·x{i + 1} = {rhs} − {self.round_sig(known_sum)}")
+                numerator_r = self.round_sig(rhs + (-known_sum))
                 self._current.append(f"  {diagonal}·x{i + 1} = {numerator_r}")
             else:
                 self._current.append(f"Isolate x{i + 1}:")
@@ -118,7 +117,7 @@ class SystemSolver:
                 numerator_r = rhs
 
             result = numerator_r / diagonal
-            result_r = self.round_sig(result, self.precision)
+            result_r = self.round_sig(result)
 
             self._current.extend([
                 f"  x{i + 1} = {numerator_r} / {diagonal}",
@@ -136,7 +135,7 @@ class SystemSolver:
             "=" * 75
         ]
         for i, val in enumerate(x, 1):
-            self._current.append(f"x{i} = {self.round_sig(val, self.precision)}")
+            self._current.append(f"x{i} = {self.round_sig(val)}")
         self._current.append("")
         self._flush()
 

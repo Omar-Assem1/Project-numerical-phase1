@@ -1,4 +1,5 @@
 import math
+from decimal import Context
 
 class ForwardEliminatorScaling:
     """Gaussian elimination with scaled partial pivoting — one big string per step"""
@@ -13,13 +14,11 @@ class ForwardEliminatorScaling:
         self.step_strings = []
         self._current = []
 
-    def round_sig(self, x, sig):
-        if x == 0:
-            return 0.0
-        order = math.floor(math.log10(abs(x)))
-        factor = 10 ** (order - sig + 1)
-        return round(x / factor) * factor
-
+    def round_sig(self, x):
+        # Create a context with the desired precision
+        ctx = Context(prec=self.precision)
+        # Normalize applies the precision to the number
+        return float(ctx.create_decimal(x).normalize())
     def _flush(self):
         if self._current:
             self.step_strings.append("\n".join(self._current))
@@ -29,7 +28,7 @@ class ForwardEliminatorScaling:
         if message:
             self._current.append(f"{message}:")
         for i, r in enumerate(self.M):
-            row_str = "  ".join(f"{self.round_sig(x, self.precision):12.6g}" for x in r)
+            row_str = "  ".join(f"{self.round_sig(x):12.6g}" for x in r)
             self._current.append(f"R{i + 1}: {row_str}")
         self._current.append("")
 
@@ -44,7 +43,7 @@ class ForwardEliminatorScaling:
             "Initial Augmented Matrix:"
         ]
         for i, r in enumerate(self.M):
-            row_str = "  ".join(f"{self.round_sig(x, self.precision):12.6g}" for x in r)
+            row_str = "  ".join(f"{self.round_sig(x):12.6g}" for x in r)
             header.append(f"R{i + 1}: {row_str}")
         header.append("")
 
@@ -56,7 +55,7 @@ class ForwardEliminatorScaling:
         for i in range(self.n):
             row_max = max(abs(self.M[i][j]) for j in range(self.n))
             scale[i] = row_max if row_max > 0 else 1.0
-            scale[i] = self.round_sig(scale[i], self.precision)
+            scale[i] = self.round_sig(scale[i])
             header.append(f"Scale[Row{i + 1}] = max|M[{i + 1}][j]| = {scale[i]}")
         header.append("")
 
@@ -80,12 +79,12 @@ class ForwardEliminatorScaling:
             self._current.append("\nCalculating scaled ratios:")
             for i in range(row, self.n):
                 ratio = abs(self.M[i][col]) / scale[i] if scale[i] > 0 else 0.0
-                ratio_r = self.round_sig(ratio, self.precision)
+                ratio_r = self.round_sig(ratio)
                 marker = " ← BEST" if ratio_r > best_ratio else ""
                 if marker:
                     best_ratio = ratio_r
                     best_idx = i
-                self._current.append(f"  Row{i + 1}: |{self.round_sig(self.M[i][col], self.precision)}| / {scale[i]} = {ratio_r}{marker}")
+                self._current.append(f"  Row{i + 1}: |{self.round_sig(self.M[i][col])}| / {scale[i]} = {ratio_r}{marker}")
 
             if best_ratio < 1e-12:
                 self._current.append(f"\nNo valid pivot found in column {col + 1}, skipping...")
@@ -105,7 +104,7 @@ class ForwardEliminatorScaling:
                 self._current = []  # next steps start fresh
 
             pivot = self.M[row][col]
-            pivot_rounded = self.round_sig(pivot, self.precision)
+            pivot_rounded = self.round_sig(pivot)
             self._current.append(f"\nPIVOT at Row{row + 1}, Col{col + 1} = {pivot_rounded}")
             self._current.append(f"Scaled ratio = {best_ratio}")
             self._current.append("=" * 80)
@@ -121,12 +120,12 @@ class ForwardEliminatorScaling:
                 numerator = self.M[i][col]
                 denominator = self.M[row][col]
                 factor = numerator / denominator
-                factor_rounded = self.round_sig(factor, self.precision)
+                factor_rounded = self.round_sig(factor)
 
                 self._current.extend([
                     f"--- Step {step_count}: Row{i + 1} -= factor × Row{row + 1} ---",
                     f"Factor = M[{i + 1}][{col + 1}] / M[{row + 1}][{col + 1}]",
-                    f"       = {self.round_sig(numerator, self.precision)} / {self.round_sig(denominator, self.precision)}",
+                    f"       = {self.round_sig(numerator)} / {self.round_sig(denominator)}",
                     f"       = {factor_rounded}",
                     f"Operation: Row{i + 1} = Row{i + 1} - ({factor_rounded}) × Row{row + 1}",
                     "-" * 80
@@ -138,9 +137,9 @@ class ForwardEliminatorScaling:
                     product = factor_rounded * pivot_row_val
                     new_val = old_val - product
 
-                    old_r = self.round_sig(old_val, self.precision)
-                    piv_r = self.round_sig(pivot_row_val, self.precision)
-                    new_r = self.round_sig(new_val, self.precision)
+                    old_r = self.round_sig(old_val)
+                    piv_r = self.round_sig(pivot_row_val)
+                    new_r = self.round_sig(new_val)
 
                     if j == col:
                         self._current.append(f"M[{i + 1}][{j + 1}]: {old_r} - ({factor_rounded} × {piv_r}) = 0")
@@ -152,7 +151,7 @@ class ForwardEliminatorScaling:
                 # Update scale for row i
                 row_max = max(abs(self.M[i][j]) for j in range(self.n))
                 if row_max > 0:
-                    scale[i] = self.round_sig(row_max, self.precision)
+                    scale[i] = self.round_sig(row_max)
                     self._current.append(f"\nUpdated Scale[Row{i + 1}] = {scale[i]}")
 
                 self._print(f"Matrix after Row{i + 1} operation")
@@ -171,7 +170,7 @@ class ForwardEliminatorScaling:
             "Final Echelon Matrix:"
         ]
         for i, r in enumerate(self.M):
-            row_str = "  ".join(f"{self.round_sig(x, self.precision):12.6g}" for x in r)
+            row_str = "  ".join(f"{self.round_sig(x):12.6g}" for x in r)
             final.append(f"R{i + 1}: {row_str}")
         final.append("")
         self._current = final

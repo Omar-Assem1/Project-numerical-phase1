@@ -1,4 +1,5 @@
 # chelosky_crout.py → Crout LU
+from decimal import Context
 import math
 from typing import List, Optional
 
@@ -15,17 +16,11 @@ class Crout_LU:
         self.step_strings = []
         self._current = []
 
-    def round_sig(self, x, sig=None):
-        if sig is None:
-            sig = self.precision
-        if x == 0:
-            return 0.0
-        try:
-            order = math.floor(math.log10(abs(x)))
-            factor = 10 ** (order - sig + 1)
-            return round(x / factor) * factor
-        except:
-            return x
+    def round_sig(self, x):
+        # Create a context with the desired precision
+        ctx = Context(prec=self.precision)
+        # Normalize applies the precision to the number
+        return float(ctx.create_decimal(x).normalize())
 
     def _flush(self):
         if self._current:

@@ -1,5 +1,6 @@
 # classes_for_gauss_jordan/gjscaling.py
 import math
+from decimal import Context
 
 
 class GaussJordanEliminatorScaling:
@@ -13,17 +14,11 @@ class GaussJordanEliminatorScaling:
         self.step_strings = []
         self._current = []
 
-    def round_sig(self, x, sig=None):
-        if sig is None:
-            sig = self.precision
-        if x == 0:
-            return 0.0
-        try:
-            order = math.floor(math.log10(abs(x)))
-            factor = 10 ** (order - sig + 1)
-            return round(x / factor) * factor
-        except:
-            return x
+    def round_sig(self, x):
+        # Create a context with the desired precision
+        ctx = Context(prec=self.precision)
+        # Normalize applies the precision to the number
+        return float(ctx.create_decimal(x).normalize())
 
     def _flush(self):
         if self._current:
@@ -137,7 +132,7 @@ class GaussJordanEliminatorScaling:
 
             self.pivot_positions.append((h, col))
             h += 1
-
+            self.rank = h
         # Final RREF
         final = [
             "=" * 80,

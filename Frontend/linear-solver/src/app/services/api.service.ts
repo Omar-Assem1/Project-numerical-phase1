@@ -41,9 +41,11 @@ export class ApiService {
         cell === '' ? '0' : cell
       );
       request.initialGuess = request.initialGuess!.map(cell =>
-        cell === '' ? '0' : cell
+        cell === '' ? '1' : cell
       );
-
+      if(request.precision === null) {
+        request.precision = 5;
+      }
       console.log('ApiService: Sending solve request to', `${this.apiUrl}/solve`, request);
         return this.http.post<SolveResponse>(`${this.apiUrl}/solve`, request);
     }
