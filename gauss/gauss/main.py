@@ -1,159 +1,209 @@
-# main.py
-from gauss.Itrativemethods.ItrativeMethods import IterativeMethods
-from linear_system import LinearSystem
-from classes.forward_eliminator import ForwardEliminator
-from classes.forward_eliminator_scaling import ForwardEliminatorScaling
-from classes.system_solver import SystemSolver
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import time
 
-# Gauss-Jordan (assuming you have these with steps recording too)
-from classes_for_gauss_jordan.gauss_jordan_eliminator import GaussJordanEliminator
-from classes_for_gauss_jordan.gjscaling import GaussJordanEliminatorScaling
-from classes_for_gauss_jordan.rref_solver import RREFSolver
+# Import your existing solver modules
+from .Itrativemethods.ItrativeMethods import IterativeMethods
+from .linear_system import LinearSystem
 
-# LU methods (you can later update them to collect steps too)
-from Dolittle.LUsolver import LUSolver
-from chelosky_crout import Crout_LU, Chelosky_LU
+from .classes.forward_eliminator import ForwardEliminator
+from .classes.forward_eliminator_scaling import ForwardEliminatorScaling
+from .classes.system_solver import SystemSolver
+
+from .classes_for_gauss_jordan.gauss_jordan_eliminator import GaussJordanEliminator
+from .classes_for_gauss_jordan.gjscaling import GaussJordanEliminatorScaling
+from .classes_for_gauss_jordan.rref_solver import RREFSolver
+
+from .Dolittle.LUsolver import LUSolver
+from .chelosky_crout import Crout_LU, Chelosky_LU
+
+app = Flask(__name__)
+CORS(app)  # Enable CORS for Angular frontend
 
 
-def main():
-    # 1. Input n and precision
-    n = int(input("Enter number of equations (n): "))
-    precision = int(input("Enter desired precision (number of significant figures): "))
-    X0 = [0,0,0,0]
-    # Create system and input equations
-    system = LinearSystem(n, precision)
+@app.route('/api/solve', methods=['POST'])
+def solve_system():
+    """
+    Main endpoint to solve linear systems
+    Expected JSON payload:
+    {
+        "method": "gauss-elimination" | "gauss-jordan" | "lu-decomposition" | "jacobi" | "gauss-seidel",
+        "matrix": [["1", "2"], ["3", "4"]],
+        "constants": ["5", "6"],
+        "precision": 5,
+        "scaling": false,
+        "stepByStep": true,
+        "luForm": "doolittle" | "crout" | "cholesky",
+        "initialGuess": ["0", "0"],
+        "maxIterations": 50,
+        "tolerance": 0.00001
+    }
+    """
+    try:
+        start_time = time.time()
 
-    print(f"\nPlease enter {n} equations (each with {n} coefficients + 1 constant term):")
-    print("Example: 2 1 3 10   → means 2x₁ + x₂ + 3x₃ = 10\n")
+        # Parse request data
+        data = request.get_json()
+        method = data.get('method')
+        matrix_str = data.get('matrix', [])
+        constants_str = data.get('constants', [])
+        precision = data.get('precision', 5)
+        scaling = data.get('scaling', False)
+        step_by_step = data.get('stepByStep', True)
+        lu_form = data.get('luForm', 'doolittle')
+        initial_guess_str = data.get('initialGuess', [])
+        max_iterations = data.get('maxIterations', 50)
+        tolerance = data.get('tolerance', 0.00001)
 
-    while not system.is_complete():
-        eq = input(f"Equation {system.current_row + 1}/{n}: ").strip()
-        system.add_equation(eq)
+        # Convert string matrix to float
+        n = len(matrix_str)
+        matrix = [[float(val) if val else 0.0 for val in row] for row in matrix_str]
+        constants = [float(val) if val else 0.0 for val in constants_str]
 
-    system.show("Your System (Augmented Matrix)")
+        # Create augmented matrix [A|b]
+        augmented = [matrix[i] + [constants[i]] for i in range(n)]
 
-    # Extract data
-    augmented = system.copy_matrix()  # [A|b]
-    A = [row[:n] for row in augmented]
-    b = [row[n] for row in augmented]
+        # Steps collection
+        steps = []
+        solution = None
+        iterations = None
 
-    # Choose method
-    print("\n" + "=" * 70)
-    print("                LINEAR SYSTEM SOLVER")
-    print("=" * 70)
-    print("1. Gauss Elimination (Partial Pivoting)")
-    print("2. Gauss-Jordan Elimination (RREF)")
-    print("3. LU Doolittle + Partial Pivoting")
-    print("4. Crout LU Decomposition")
-    print("5. Cholesky Decomposition")
-    print("6. Jacobi Method")
-    print("6. Gauss-Seidel Method")
+        # Route to appropriate solver
+        if method == 'gauss-elimination':
+            if scaling:
+                elim = ForwardEliminatorScaling(augmented.copy(), precision)
+            else:
+                elim = ForwardEliminator(augmented.copy(), precision)
 
-    print("-" * 70)
-    choice = int(input("Enter choice (1-7): "))
-
-    show_steps = input("\nShow step-by-step operations? (y/n): ").strip().lower() == 'y'
-
-    # Master list to collect all steps
-    steps = []
-
-    print("\n" + "=" * 80)
-
-    # ==================================================================
-    if choice == 1:
-        print("Gauss Elimination → (1) Partial Pivoting | (2) + Scaling")
-        scaling_choice = int(input("Choose (1 or 2): "))
-
-        if scaling_choice == 1:
-            elim = ForwardEliminator(augmented.copy(), precision)
             elim.eliminate(steps)
-        elif scaling_choice == 2:
-            elim = ForwardEliminatorScaling(augmented.copy(), precision)
+            echelon, rank, pivots = elim.get_result()
+            solver = SystemSolver(echelon, rank, n, pivots, precision)
+            solution = solver.solve(steps)
+
+        elif method == 'gauss-jordan':
+            if scaling:
+                elim = GaussJordanEliminatorScaling(augmented.copy(), precision)
+            else:
+                elim = GaussJordanEliminator(augmented.copy(), precision)
+
             elim.eliminate(steps)
+            rref, rank, pivots = elim.get_rref_result()
+            solver = RREFSolver(rref, rank, n, pivots, precision)
+            solution = solver.solve(steps)
+
+        elif method == 'lu-decomposition':
+            if lu_form == 'doolittle':
+                solver = LUSolver(precision)
+                solution = solver.solve(matrix.copy(), constants.copy(), steps)
+            elif lu_form == 'crout':
+                crout = Crout_LU(augmented.copy(), n, precision)
+                solution = crout.solve(steps)
+            elif lu_form == 'cholesky':
+                cholesky = Chelosky_LU(augmented.copy(), n, precision)
+                solution = cholesky.solve(steps)
+            else:
+                return jsonify({'error': 'Invalid LU form'}), 400
+
+        elif method == 'jacobi':
+            initial_guess = [float(val) if val else 0.0 for val in initial_guess_str]
+            solver = IterativeMethods(
+                n=n,
+                A=matrix,
+                b=constants,
+                X0=initial_guess,
+                max_iter=max_iterations,
+                tol=tolerance,
+                precision=precision
+            )
+            solution, iterations = solver.jacobi(steps)
+
+        elif method == 'gauss-seidel':
+            initial_guess = [float(val) if val else 0.0 for val in initial_guess_str]
+            solver = IterativeMethods(
+                n=n,
+                A=matrix,
+                b=constants,
+                X0=initial_guess,
+                max_iter=max_iterations,
+                tol=tolerance,
+                precision=precision
+            )
+            solution, iterations = solver.gauss_seidel(steps)
+
         else:
-            print("Invalid choice")
-            return
+            return jsonify({'error': 'Invalid method'}), 400
 
-        echelon, rank, pivots = elim.get_result()
-        solver = SystemSolver(echelon, rank, n, pivots, precision)
-        solution = solver.solve(steps)
+        # Calculate execution time
+        execution_time = time.time() - start_time
 
-    # ==================================================================
-    elif choice == 2:
-        print("Gauss-Jordan → (1) Partial Pivoting | (2) + Scaling")
-        scaling_choice = int(input("Choose (1 or 2): "))
-
-        if scaling_choice == 1:
-            elim = GaussJordanEliminator(augmented.copy(), precision)
-            elim.eliminate(steps)
-        elif scaling_choice == 2:
-            elim = GaussJordanEliminatorScaling(augmented.copy(), precision)
-            elim.eliminate(steps)
+        # Format solution
+        if solution:
+            solution_str = [f"{val:.{precision}g}" for val in solution]
         else:
-            print("Invalid choice")
-            return
+            solution_str = None
 
-        rref, rank, pivots = elim.get_rref_result()
-        solver = RREFSolver(rref, rank, n, pivots, precision)
-        solution = solver.solve(steps)
+        # Prepare response
+        response = {
+            'solution': solution_str,
+            'executionTime': f"{execution_time:.9f}s",
+            'steps': steps if step_by_step else []
+        }
 
-    # ==================================================================
-    elif choice == 3:
-        print("LU DECOMPOSITION (Doolittle + Partial Pivoting)")
-        print("=" * 80)
-        try:
-            solver = LUSolver(precision)  # use user-defined precision
-            solution = solver.solve(A.copy(), b.copy(), steps)  # pass steps list
+        if iterations is not None:
+            response['iterations'] = iterations
 
-            # Only print solution if not showing steps
-            if not show_steps:
-                print("UNIQUE SOLUTION:")
-                print("-" * 50)
-                for i, val in enumerate(solution, 1):
-                    print(f"x{i} = {val:.{precision}g}")
-                print("-" * 50)
-        except Exception as e:
-            steps.append(f"Error during LU decomposition: {e}")
-            print("Error (possibly singular matrix):", e)
+        return jsonify(response), 200
 
-    # ==================================================================
-    elif choice == 4:
-        print("CROUT LU DECOMPOSITION (No Pivoting)")
-        print("=" * 80)
-        crout = Crout_LU(augmented.copy(), n, precision)
-        solution = crout.solve(steps)
-
-    elif choice == 5:
-        print("CHOLESKY DECOMPOSITION (For SPD matrices only)")
-        print("=" * 80)
-        chelosky = Chelosky_LU(augmented.copy(), n, precision)
-        solution = chelosky.solve(steps)
-    elif choice == 6:
-        tol = float(input("Enter tolerance: "))
-        itr = int(input("Enter iterations: "))
-        solver = IterativeMethods(n, A=A, b=b, X0=X0, max_iter=itr ,tol =tol, precision=precision)
-        solver.jacobi(steps)
-    elif choice == 7:
-        tol = float(input("Enter tolerance: "))
-        itr = int(input("Enter iterations: "))
-        solver = IterativeMethods(n, A=A, b=b, X0=X0, max_iter=itr, tol=tol, precision=precision)
-        solver.gauss_seidel(steps)
-    else:
-        print("Invalid choice!")
-        return
-
-    # ==================================================================
-    # Final Output
-    # ==================================================================
-    if show_steps and steps:
-        print("\n" + "="*80)
-        print("               DETAILED STEP-BY-STEP SOLUTION")
-        print("="*80)
-        print("\n".join(steps))
-        print("="*80)
-
-    print("\nProgram finished. Goodbye!\n")
+    except ValueError as e:
+        return jsonify({'error': f'Invalid input: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Solver error: {str(e)}'}), 500
 
 
-if __name__ == "__main__":
-    main()
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({'status': 'ok', 'message': 'Linear System Solver API is running'}), 200
+
+
+@app.route('/api/methods', methods=['GET'])
+def get_methods():
+    """Get available solving methods"""
+    methods = [
+        {
+            'value': 'gauss-elimination',
+            'label': 'Gauss Elimination',
+            'supportsScaling': True,
+            'isIterative': False
+        },
+        {
+            'value': 'gauss-jordan',
+            'label': 'Gauss-Jordan',
+            'supportsScaling': True,
+            'isIterative': False
+        },
+        {
+            'value': 'lu-decomposition',
+            'label': 'LU Decomposition',
+            'supportsScaling': False,
+            'isIterative': False,
+            'forms': ['doolittle', 'crout', 'cholesky']
+        },
+        {
+            'value': 'jacobi',
+            'label': 'Jacobi Iteration',
+            'supportsScaling': False,
+            'isIterative': True
+        },
+        {
+            'value': 'gauss-seidel',
+            'label': 'Gauss-Seidel',
+            'supportsScaling': False,
+            'isIterative': True
+        }
+    ]
+    return jsonify(methods), 200
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080, debug=True)
