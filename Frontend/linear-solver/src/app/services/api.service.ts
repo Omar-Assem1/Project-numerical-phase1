@@ -26,6 +26,31 @@ export interface SolveResponse {
   error?: string;
 }
 
+export interface RootFindingRequest {
+  method: string;
+  equation: string;
+  xLower?: string;
+  xUpper?: string;
+  x0?: string;
+  x1?: string;
+  precision?: number;
+  eps: number;
+  maxIterations: number;
+  stepByStep?: boolean;
+}
+
+export interface RootFindingResponse {
+  root?: number;
+  iterations?: number;
+  approximateError?: number;
+  significantFigures?: number;
+  executionTime: string;
+  steps?: string[];
+  plotData?: { x: number[], y: number[] };
+  message?: string;
+  error?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -55,7 +80,7 @@ export class ApiService {
         if (/^[a-zA-Z]$/.test(request.matrix[i][j])) {
           request.symbolic = true;
         }
-        else{
+        else {
           request.symbolic = false;
           break;
         }
@@ -65,5 +90,10 @@ export class ApiService {
 
     console.log('ApiService: Sending solve request to', `${this.apiUrl}/solve`, request);
     return this.http.post<SolveResponse>(`${this.apiUrl}/solve`, request);
+  }
+
+  solveRootFinding(request: RootFindingRequest): Observable<RootFindingResponse> {
+    console.log('ApiService: Sending root-finding request to', `${this.apiUrl}/solve`, request);
+    return this.http.post<RootFindingResponse>(`${this.apiUrl}/solve`, request);
   }
 }

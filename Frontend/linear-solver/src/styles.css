@@ -1,3 +1,75 @@
+/* Updated styles.css */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    /* Ensures the very top element is themed */
+    @apply bg-white dark:bg-gray-900;
+  }
+
+  /* CRITICAL: Target the body and the Angular root host element.
+     This catches overrides that sometimes happen on these layers.
+  */
+  body,
+  app-root {
+    @apply bg-white dark:bg-gray-900;
+  }
+}
+
+@layer utilities {
+  @keyframes slide-out-left {
+    to {
+      transform: translateX(-20%);
+      opacity: 0;
+      filter: brightness(0.8);
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(20%);
+      opacity: 0;
+    }
+  }
+}
+
+/* FIX: Contextually set the background of the View Transition canvas */
+::view-transition,
+::view-transition-group(root),
+::view-transition-image-pair(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  /* Default background for Light Mode */
+  background-color: white !important;
+}
+
+/* Target all view transition elements when the 'dark' class is present on <html> */
+html.dark ::view-transition,
+html.dark ::view-transition-group(root),
+html.dark ::view-transition-image-pair(root),
+html.dark ::view-transition-old(root),
+html.dark ::view-transition-new(root) {
+  /* Hex code for Tailwind's gray-900 is #111827 */
+  background-color: #111827 !important;
+}
+
+/* Ensure the animations still apply */
+::view-transition-old(root) {
+  animation: 300ms ease-out both slide-out-left;
+}
+
+::view-transition-new(root) {
+  animation: 300ms ease-out both slide-in-right;
+}
+
+@media (prefers-reduced-motion) {
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

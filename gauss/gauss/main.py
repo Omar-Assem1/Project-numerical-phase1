@@ -4,19 +4,19 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import time
 # Import your existing solver modules
-from .Itrativemethods.ItrativeMethods import ItrativeMethods
-from .linear_system import LinearSystem
-from .rank import SolutionType
-from .classes.forward_eliminator import ForwardEliminator
-from .classes.forward_eliminator_scaling import ForwardEliminatorScaling
-from .classes.system_solver import SystemSolver
+from gauss.gauss.Itrativemethods.ItrativeMethods import ItrativeMethods
+from gauss.gauss.linear_system import LinearSystem
+from gauss.gauss.rank import SolutionType
+from gauss.gauss.classes.forward_eliminator import ForwardEliminator
+from gauss.gauss.classes.forward_eliminator_scaling import ForwardEliminatorScaling
+from gauss.gauss.classes.system_solver import SystemSolver
 
-from .classes_for_gauss_jordan.gauss_jordan_eliminator import GaussJordanEliminator
-from .classes_for_gauss_jordan.gjscaling import GaussJordanEliminatorScaling
-from .classes_for_gauss_jordan.rref_solver import RREFSolver
+from gauss.gauss.classes_for_gauss_jordan.gauss_jordan_eliminator import GaussJordanEliminator
+from gauss.gauss.classes_for_gauss_jordan.gjscaling import GaussJordanEliminatorScaling
+from gauss.gauss.classes_for_gauss_jordan.rref_solver import RREFSolver
 
-from .Dolittle.LUsolver import LUSolver
-from .chelosky_crout import Crout_LU, Chelosky_LU
+from gauss.gauss.Dolittle.LUsolver import LUSolver
+from gauss.gauss.chelosky_crout import Crout_LU, Chelosky_LU
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Angular frontend
