@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, RootFindingRequest, RootFindingResponse } from '../../services/api.service';
+import { ApiService, RootFindingRequest, RootFindingResponse, PlotRequest } from '../../services/api.service';
 
 @Component({
   selector: 'app-root-finder',
@@ -30,6 +30,11 @@ export class RootFinderComponent implements OnInit, OnDestroy {
   currentStep: number = 0;
   loading: boolean = false;
   errorMessage: string = '';
+
+  // Plot
+  plotImage: string | null = null;
+  loadingPlot: boolean = false;
+  plotErrorMessage: string = '';
 
   // Simulation (copied from Phase 1)
   isPlaying: boolean = false;
@@ -121,6 +126,32 @@ export class RootFinderComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Handle plot button click
+  handlePlot(): void {
+    this.loadingPlot = true;
+    this.plotImage = null;
+    this.plotErrorMessage = '';
+
+    const payload: PlotRequest = {
+      method: this.method,
+      equation: this.equation
+    };
+
+    this.apiService.getPlot(payload).subscribe({
+      next: (response) => {
+        console.log('Component: Received plot response', response);
+        this.plotImage = response.plotImage;
+        this.loadingPlot = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.plotErrorMessage = error.error?.message || 'An error occurred while generating plot';
+        this.loadingPlot = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   // Simulation control methods (copied from Phase 1)
   previousStep(): void {
     if (this.currentStep > 0) {
@@ -183,6 +214,8 @@ export class RootFinderComponent implements OnInit, OnDestroy {
     this.steps = [];
     this.currentStep = 0;
     this.errorMessage = '';
+    this.plotImage = null;
+    this.plotErrorMessage = '';
     this.stopSimulation();
   }
 }

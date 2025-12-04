@@ -17,7 +17,7 @@ from gauss.gauss.classes_for_gauss_jordan.rref_solver import RREFSolver
 
 from gauss.gauss.Dolittle.LUsolver import LUSolver
 from gauss.gauss.chelosky_crout import Crout_LU, Chelosky_LU
-
+from gauss.gauss.nonlinear import plotter
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Angular frontend
 
@@ -31,8 +31,8 @@ def convert_sympy(obj):
     if isinstance(obj, dict):      # Dict with expressions
         return {k: convert_sympy(v) for k, v in obj.items()}
     return obj
-@app.route('/api/solve', methods=['POST'])
-def solve_system():
+@app.route('/api/solve/linear', methods=['POST'])
+def linear_solve():
     try:
         start_time = time.time()
 
@@ -170,5 +170,39 @@ def solve_system():
             'details': str(e),
             'trace': traceback.format_exc()
         }), 500
+
+
+@app.route('/api/plot', methods=['POST'])
+def plot():
+    data = request.get_json()
+    method = data.get('method')
+    function = data.get('equation')
+    function = function.replace("^", "**")
+    try:
+
+        if method == 'fixed-point':
+            return jsonify({'plotImage':plotter.get_plot_base64(function,True)})
+        else:
+            return jsonify({'plotImage':plotter.get_plot_base64(function)})
+    except Exception as e:
+        return jsonify({'error': f'Couldn\'t Plot '}), 400
+
+
+
+@app.route('/api/solve/nonlinear',methods=['POST'])
+def nonlinear_solve():
+    data = request.get_json()
+    method = data.get('method')
+    equation = data.get('equation')
+    xLower = data.get('xLower',0)
+    xUpper = data.get('xUpper',0)
+    x0 = data.get('x0',0)
+    x1 = data.get('x1',0)
+    precision = data.get('precision',5)
+    epsilon = data.get('eps', 0.00001)
+    maxIterations = data.get('maxIterations',50)
+    step_by_step = data.get('stepByStep')
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

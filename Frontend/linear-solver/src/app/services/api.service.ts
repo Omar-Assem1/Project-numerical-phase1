@@ -47,7 +47,18 @@ export interface RootFindingResponse {
   executionTime: string;
   steps?: string[];
   plotData?: { x: number[], y: number[] };
+  plotImage?: string;
   message?: string;
+  error?: string;
+}
+
+export interface PlotRequest {
+  method: string;
+  equation: string;
+}
+
+export interface PlotResponse {
+  plotImage: string;
   error?: string;
 }
 
@@ -89,11 +100,16 @@ export class ApiService {
 
 
     console.log('ApiService: Sending solve request to', `${this.apiUrl}/solve`, request);
-    return this.http.post<SolveResponse>(`${this.apiUrl}/solve`, request);
+    return this.http.post<SolveResponse>(`${this.apiUrl}/solve/linear`, request);
   }
 
   solveRootFinding(request: RootFindingRequest): Observable<RootFindingResponse> {
     console.log('ApiService: Sending root-finding request to', `${this.apiUrl}/solve`, request);
-    return this.http.post<RootFindingResponse>(`${this.apiUrl}/solve`, request);
+    return this.http.post<RootFindingResponse>(`${this.apiUrl}/solve/nonlinear`, request);
+  }
+
+  getPlot(request: PlotRequest): Observable<PlotResponse> {
+    console.log('ApiService: Sending plot request to', `${this.apiUrl}/plot`, request);
+    return this.http.post<PlotResponse>(`${this.apiUrl}/plot`, request);
   }
 }
