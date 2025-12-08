@@ -260,14 +260,14 @@
           }
           @if (result.iterations) {
           <div class="flex items-center gap-2">
-            <span class="text-gray-500 dark:text-gray-400">Iterations:</span>
-            <span class="font-mono font-semibold text-indigo-700">{{ result.iterations }}</span>
+            <span class="text-gray-500 dark:text-gray-100 ">Iterations:</span>
+            <span class="font-mono font-semibold text-indigo-700 dark:text-teal-500">{{ result.iterations }}</span>
           </div>
           }
           @if (result.approximateError != null) {
           <div class="flex items-center gap-2">
-            <span class="text-gray-500 dark:text-gray-400">Error:</span>
-            <span class="font-mono font-semibold text-indigo-700">{{ result.approximateError }}</span>
+            <span class="text-gray-500 dark:text-gray-100">Error:</span>
+            <span class="font-mono font-semibold text-indigo-700 dark:text-teal-500">{{ result.approximateError }}</span>
           </div>
           }
           @if (result.significantFigures) {

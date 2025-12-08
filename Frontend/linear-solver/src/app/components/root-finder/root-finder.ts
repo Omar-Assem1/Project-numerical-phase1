@@ -29,7 +29,7 @@ export class RootFinderComponent implements OnInit, OnDestroy {
   steps: string[] = [];
   currentStep: number = 0;
   loading: boolean = false;
-  errorMessage: string = '';
+    errorMessage: string = '';
 
   // Plot
   plotImage: string | null = null;

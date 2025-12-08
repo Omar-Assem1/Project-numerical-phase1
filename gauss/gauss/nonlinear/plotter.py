@@ -34,7 +34,7 @@ def get_plot_base64(function: str, include_yx_plot: bool = False):
 
     # Create figure + attach renderer backend
     fig = Figure(figsize=(6, 4))
-    FigureCanvasAgg(fig)     # <-- REQUIRED
+    FigureCanvasAgg(fig)
     ax = fig.subplots()
 
     # Plot function
@@ -50,8 +50,8 @@ def get_plot_base64(function: str, include_yx_plot: bool = False):
     ax.set_ylabel("Y axis")
     ax.set_title("Function Plot")
     ax.grid(True)
-    ax.set_ylim(-3, 3)
-    ax.set_xlim(-2, 2)
+    ax.set_ylim(-30, 30)
+    ax.set_xlim(-10, 10)
 
     # Convert to base64
     buf = BytesIO()

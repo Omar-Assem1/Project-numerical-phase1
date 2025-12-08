@@ -1,3 +1,5 @@
+from email import message
+
 from pyexpat.errors import messages
 
 from flask import Flask, request, jsonify
@@ -6,6 +8,9 @@ import time
 # Import your existing solver modules
 from gauss.gauss.Itrativemethods.ItrativeMethods import ItrativeMethods
 from gauss.gauss.linear_system import LinearSystem
+from gauss.gauss.nonlinear.falsePosition import falsePosition
+from gauss.gauss.nonlinear.bisection import bisection
+
 from gauss.gauss.rank import SolutionType
 from gauss.gauss.classes.forward_eliminator import ForwardEliminator
 from gauss.gauss.classes.forward_eliminator_scaling import ForwardEliminatorScaling
@@ -18,6 +23,7 @@ from gauss.gauss.classes_for_gauss_jordan.rref_solver import RREFSolver
 from gauss.gauss.Dolittle.LUsolver import LUSolver
 from gauss.gauss.chelosky_crout import Crout_LU, Chelosky_LU
 from gauss.gauss.nonlinear import plotter
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Angular frontend
 
@@ -174,35 +180,82 @@ def linear_solve():
 
 @app.route('/api/plot', methods=['POST'])
 def plot():
-    data = request.get_json()
-    method = data.get('method')
-    function = data.get('equation')
-    function = function.replace("^", "**")
     try:
+
+        data = request.get_json()
+        method = data.get('method')
+        function = data.get('equation')
+        function = function.replace("^", "**")
 
         if method == 'fixed-point':
             return jsonify({'plotImage':plotter.get_plot_base64(function,True)})
         else:
             return jsonify({'plotImage':plotter.get_plot_base64(function)})
     except Exception as e:
-        return jsonify({'error': f'Couldn\'t Plot '}), 400
+        return jsonify({'error': f'Couldn\'t Plot '}), 500
 
 
 
 @app.route('/api/solve/nonlinear',methods=['POST'])
 def nonlinear_solve():
-    data = request.get_json()
-    method = data.get('method')
-    equation = data.get('equation')
-    xLower = data.get('xLower',0)
-    xUpper = data.get('xUpper',0)
-    x0 = data.get('x0',0)
-    x1 = data.get('x1',0)
-    precision = data.get('precision',5)
-    epsilon = data.get('eps', 0.00001)
-    maxIterations = data.get('maxIterations',50)
-    step_by_step = data.get('stepByStep')
+    try:
+        start_time = time.time()
+        data = request.get_json()
+        method = data.get('method')
+        equation = data.get('equation')
+        xLower = float(data.get('xLower',0))
+        xUpper = float(data.get('xUpper',0))
+        x0 = float(data.get('x0',0))
+        x1 = float(data.get('x1',0))
+        precision = data.get('precision',5)
+        epsilon = float(data.get('eps', 0.00001))
+        maxIterations = data.get('maxIterations',50)
+        step_by_step = data.get('stepByStep')
 
+        if method == 'bisection':
+            bi = bisection(equation, xLower, xUpper, epsilon, maxIterations, precision)
+            solution = bi.solve()
+            steps = bi.step_strings
+            approximateError = bi.approximateError
+            iterations = bi.iterations
+        elif method == 'false-position':
+            fs = falsePosition(equation, xLower, xUpper, epsilon, maxIterations, precision)
+            solution = fs.solve()
+            steps = fs.step_strings
+            approximateError = fs.approximateError
+            iterations = fs.iterations
+        elif method == 'fixed-point':
+            #TODO: Some implementation here
+            pass
+        elif method == 'newton':
+            # TODO: Some implementation here
+            pass
+        elif method == 'modified-newton':
+            # TODO: Some implementation here
+            pass
+        elif method == 'secant':
+            # TODO: Some implementation here
+            pass
+        else:
+            return jsonify({'error': f'Method {method} not supported'}), 400
+        execution_time = (time.time() - start_time) * 1000
+        response = {
+            'executionTime': f"{execution_time:.10f}m",
+            'steps': steps if step_by_step else [],
+            'approximateError': approximateError,
+            'root': solution,
+            'iterations': iterations if iterations is not None else [],
+            'approximateError' : approximateError,
+        }
+        return jsonify(response), 200
+
+
+
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'message': f'{e}',
+        }), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

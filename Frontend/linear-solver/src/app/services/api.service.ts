@@ -17,14 +17,6 @@ export interface SolveRequest {
   symbolic?: boolean;
 }
 
-export interface SolveResponse {
-  solution?: string[];
-  executionTime: string;
-  iterations?: number;
-  steps?: string[];
-  message?: string;
-  error?: string;
-}
 
 export interface RootFindingRequest {
   method: string;
@@ -39,6 +31,14 @@ export interface RootFindingRequest {
   stepByStep?: boolean;
 }
 
+export interface SolveResponse {
+  solution?: string[];
+  executionTime: string;
+  iterations?: number;
+  steps?: string[];
+  message?: string;
+  error?: string;
+}
 export interface RootFindingResponse {
   root?: number;
   iterations?: number;
@@ -46,8 +46,6 @@ export interface RootFindingResponse {
   significantFigures?: number;
   executionTime: string;
   steps?: string[];
-  plotData?: { x: number[], y: number[] };
-  plotImage?: string;
   message?: string;
   error?: string;
 }
