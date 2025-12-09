@@ -1,28 +1,44 @@
+from email import message
+
+from pyexpat.errors import messages
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import time
-
 # Import your existing solver modules
-from .Itrativemethods.ItrativeMethods import IterativeMethods
-from .linear_system import LinearSystem
+from gauss.gauss.Itrativemethods.ItrativeMethods import ItrativeMethods
+from gauss.gauss.linear_system import LinearSystem
+from gauss.gauss.nonlinear.falsePosition import falsePosition
+from gauss.gauss.nonlinear.bisection import bisection
 
-from .classes.forward_eliminator import ForwardEliminator
-from .classes.forward_eliminator_scaling import ForwardEliminatorScaling
-from .classes.system_solver import SystemSolver
+from gauss.gauss.rank import SolutionType
+from gauss.gauss.classes.forward_eliminator import ForwardEliminator
+from gauss.gauss.classes.forward_eliminator_scaling import ForwardEliminatorScaling
+from gauss.gauss.classes.system_solver import SystemSolver
 
-from .classes_for_gauss_jordan.gauss_jordan_eliminator import GaussJordanEliminator
-from .classes_for_gauss_jordan.gjscaling import GaussJordanEliminatorScaling
-from .classes_for_gauss_jordan.rref_solver import RREFSolver
+from gauss.gauss.classes_for_gauss_jordan.gauss_jordan_eliminator import GaussJordanEliminator
+from gauss.gauss.classes_for_gauss_jordan.gjscaling import GaussJordanEliminatorScaling
+from gauss.gauss.classes_for_gauss_jordan.rref_solver import RREFSolver
 
-from .Dolittle.LUsolver import LUSolver
-from .chelosky_crout import Crout_LU, Chelosky_LU
+from gauss.gauss.Dolittle.LUsolver import LUSolver
+from gauss.gauss.chelosky_crout import Crout_LU, Chelosky_LU
+from gauss.gauss.nonlinear import plotter
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Angular frontend
 
+def convert_sympy(obj):
+    from sympy import Basic
 
-@app.route('/api/solve', methods=['POST'])
-def solve_system():
+    if isinstance(obj, Basic):     # Single SymPy expression
+        return str(obj)
+    if isinstance(obj, list):      # List of expressions
+        return [convert_sympy(x) for x in obj]
+    if isinstance(obj, dict):      # Dict with expressions
+        return {k: convert_sympy(v) for k, v in obj.items()}
+    return obj
+@app.route('/api/solve/linear', methods=['POST'])
+def linear_solve():
     try:
         start_time = time.time()
 
@@ -36,18 +52,33 @@ def solve_system():
         lu_form = data.get('luForm', 'doolittle')
         initial_guess_str = data.get('initialGuess', [])
         max_iterations = data.get('maxIterations', 50)
-        tolerance = data.get('tolerance', 0.00001)
-
+        tolerance = float(data.get('tolerance', 0.00001))
+        symbolic  = data.get('symbolic', False)
         n = len(matrix_str)
-        matrix = [[float(val) if val.strip() else 0.0 for val in row] for row in matrix_str]
-        constants = [float(val) if val.strip() else 0.0 for val in constants_str]
-        augmented = [matrix[i][:] + [constants[i]] for i in range(n)]
+        if not symbolic:
+            matrix = [[float(val) if val.strip() else 0.0 for val in row] for row in matrix_str]
+            constants = [float(val) if val.strip() else 0.0 for val in constants_str]
+            augmented = [matrix[i][:] + [constants[i]] for i in range(n)]
+        else:
+            matrix =matrix_str
+            constants = constants_str
+            augmented = [matrix[i][:] + [constants[i]] for i in range(n)]
+        if not symbolic:
+            rankbro = SolutionType(augmented).gaussian_elimination()
+            if (rankbro == 1):
+                message = "INCONSISTENT"
+            elif (rankbro == 2):
+                message = "INFINITE NUMBER OF SOLUTIONS"
 
+            else:
+                message = "Unique Solution exists"
+        else:
+            message = "works"
         solution = None
         iterations = None
         steps = []  # This will now hold full step strings
 
-        if method == 'gauss-elimination':
+        if method == 'gauss-elimination' and not(message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
             if scaling:
                 elim = ForwardEliminatorScaling(augmented.copy(), precision)
             else:
@@ -62,7 +93,7 @@ def solve_system():
             # Combine all step strings
             steps = elim.step_strings + solver.step_strings
 
-        elif method == 'gauss-jordan':
+        elif method == 'gauss-jordan' and not(message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
             if scaling:
                 elim = GaussJordanEliminatorScaling(augmented.copy(), precision)
             else:
@@ -73,11 +104,10 @@ def solve_system():
 
             solver = RREFSolver(rref, rank, n, pivots, precision)
             solution = solver.solve()
-
             steps = elim.step_strings + solver.step_strings
 
 
-        elif method == 'lu-decomposition':
+        elif method == 'lu-decomposition'and not(message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
 
             if lu_form == 'doolittle':
 
@@ -99,42 +129,42 @@ def solve_system():
 
         elif method in ['jacobi', 'gauss-seidel']:
             initial_guess = [float(val) if val.strip() else 0.0 for val in initial_guess_str]
-            solver = IterativeMethods(
-                n=n,
-                A=matrix,
-                b=constants,
-                X0=initial_guess,
-                max_iter=max_iterations,
-                tol=tolerance,
-                precision=precision
-            )
+            solver = ItrativeMethods(n, matrix, constants, initial_guess,max_iterations , tolerance, precision)
 
             if method == 'jacobi':
-                solution, iterations = solver.jacobi()
+                if not symbolic:
+                    solver.print_iteration_formulas("jacobi")
+                    solution = solver.jacobi()
+                    steps = solver.getAnswer()
+                else:
+                    solution = solver.symbolic_iterations(max_iterations, method)
             else:
-                solution, iterations = solver.gauss_seidel()
+                if not symbolic:
+                    solution = solver.seidel()
+                    steps = solver.getAnswer()
+                else:
+                    solution = solver.symbolic_iterations(max_iterations, method)
+        execution_time = (time.time() - start_time)*1000
 
-            steps = solver.step_strings  # ← Now this is correct!
-
-        else:
-            return jsonify({'error': 'Invalid method'}), 400
-
-        execution_time = time.time() - start_time
-
-        if solution is not None:
+        if solution is not None and not symbolic:
             solution_str = [f"{val:.{precision}g}" for val in solution]
+        elif solution is not None and symbolic:
+            solution_str = convert_sympy(solution)
+            steps = ''
         else:
             solution_str = None
 
         response = {
             'solution': solution_str,
-            'executionTime': f"{execution_time:.6f}s",
+            'executionTime': f"{execution_time:.10f}m",
             'steps': steps if step_by_step else [],
+            'message': message,
         }
 
         if iterations is not None:
             response['iterations'] = iterations
-
+        if symbolic:
+            response = convert_sympy(response)
         return jsonify(response), 200
 
     except ValueError as ve:
@@ -146,5 +176,86 @@ def solve_system():
             'details': str(e),
             'trace': traceback.format_exc()
         }), 500
+
+
+@app.route('/api/plot', methods=['POST'])
+def plot():
+    try:
+
+        data = request.get_json()
+        method = data.get('method')
+        function = data.get('equation')
+        function = function.replace("^", "**")
+
+        if method == 'fixed-point':
+            return jsonify({'plotImage':plotter.get_plot_base64(function,True)})
+        else:
+            return jsonify({'plotImage':plotter.get_plot_base64(function)})
+    except Exception as e:
+        return jsonify({'error': f'Couldn\'t Plot '}), 500
+
+
+
+@app.route('/api/solve/nonlinear',methods=['POST'])
+def nonlinear_solve():
+    try:
+        start_time = time.time()
+        data = request.get_json()
+        method = data.get('method')
+        equation = data.get('equation')
+        xLower = float(data.get('xLower',0))
+        xUpper = float(data.get('xUpper',0))
+        x0 = float(data.get('x0',0))
+        x1 = float(data.get('x1',0))
+        precision = data.get('precision',5)
+        epsilon = float(data.get('eps', 0.00001))
+        maxIterations = data.get('maxIterations',50)
+        step_by_step = data.get('stepByStep')
+
+        if method == 'bisection':
+            bi = bisection(equation, xLower, xUpper, epsilon, maxIterations, precision)
+            solution = bi.solve()
+            steps = bi.step_strings
+            approximateError = bi.approximateError
+            iterations = bi.iterations
+        elif method == 'false-position':
+            fs = falsePosition(equation, xLower, xUpper, epsilon, maxIterations, precision)
+            solution = fs.solve()
+            steps = fs.step_strings
+            approximateError = fs.approximateError
+            iterations = fs.iterations
+        elif method == 'fixed-point':
+            #TODO: Some implementation here
+            pass
+        elif method == 'newton':
+            # TODO: Some implementation here
+            pass
+        elif method == 'modified-newton':
+            # TODO: Some implementation here
+            pass
+        elif method == 'secant':
+            # TODO: Some implementation here
+            pass
+        else:
+            return jsonify({'error': f'Method {method} not supported'}), 400
+        execution_time = (time.time() - start_time) * 1000
+        response = {
+            'executionTime': f"{execution_time:.10f}m",
+            'steps': steps if step_by_step else [],
+            'approximateError': approximateError,
+            'root': solution,
+            'iterations': iterations if iterations is not None else [],
+            'approximateError' : approximateError,
+        }
+        return jsonify(response), 200
+
+
+
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'message': f'{e}',
+        }), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

@@ -70,11 +70,11 @@ export class LinearSystemSolverComponent implements OnInit, OnDestroy {
   //this is the method responsible for adding equations
   // and filling up the new equations with empty spaces and zeros as in the initialization
   addEquation(): void {
-      this.numEquations++;
-      this.matrix.forEach(row => row.push(''));
-      this.matrix.push(Array(this.numEquations).fill(''));
-      this.constants.push('');
-      this.initialGuess.push('0');
+    this.numEquations++;
+    this.matrix.forEach(row => row.push(''));
+    this.matrix.push(Array(this.numEquations).fill(''));
+    this.constants.push('');
+    this.initialGuess.push('0');
   }
 
   //this is the method responsible for removing an equation and removing its variables too
