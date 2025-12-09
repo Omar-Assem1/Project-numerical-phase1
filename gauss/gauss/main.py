@@ -1,42 +1,44 @@
-from email import message
-
-from pyexpat.errors import messages
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import time
+
 # Import your existing solver modules
-from gauss.gauss.Itrativemethods.ItrativeMethods import ItrativeMethods
-from gauss.gauss.linear_system import LinearSystem
-from gauss.gauss.nonlinear.falsePosition import falsePosition
-from gauss.gauss.nonlinear.bisection import bisection
+from Itrativemethods.ItrativeMethods import ItrativeMethods
+from linear_system import LinearSystem
+from nonlinear.falsePosition import falsePosition
+from nonlinear.bisection import bisection
+from nonlinear.fixedpoint import FixedPointMethod
+from nonlinear.original_newton_raph import NewtonRaphsonMethod
 
-from gauss.gauss.rank import SolutionType
-from gauss.gauss.classes.forward_eliminator import ForwardEliminator
-from gauss.gauss.classes.forward_eliminator_scaling import ForwardEliminatorScaling
-from gauss.gauss.classes.system_solver import SystemSolver
+from rank import SolutionType
+from classes.forward_eliminator import ForwardEliminator
+from classes.forward_eliminator_scaling import ForwardEliminatorScaling
+from classes.system_solver import SystemSolver
 
-from gauss.gauss.classes_for_gauss_jordan.gauss_jordan_eliminator import GaussJordanEliminator
-from gauss.gauss.classes_for_gauss_jordan.gjscaling import GaussJordanEliminatorScaling
-from gauss.gauss.classes_for_gauss_jordan.rref_solver import RREFSolver
+from classes_for_gauss_jordan.gauss_jordan_eliminator import GaussJordanEliminator
+from classes_for_gauss_jordan.gjscaling import GaussJordanEliminatorScaling
+from classes_for_gauss_jordan.rref_solver import RREFSolver
 
-from gauss.gauss.Dolittle.LUsolver import LUSolver
-from gauss.gauss.chelosky_crout import Crout_LU, Chelosky_LU
-from gauss.gauss.nonlinear import plotter
+from Dolittle.LUsolver import LUSolver
+from chelosky_crout import Crout_LU, Chelosky_LU
+from nonlinear import plotter
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Angular frontend
 
+
 def convert_sympy(obj):
     from sympy import Basic
 
-    if isinstance(obj, Basic):     # Single SymPy expression
+    if isinstance(obj, Basic):  # Single SymPy expression
         return str(obj)
-    if isinstance(obj, list):      # List of expressions
+    if isinstance(obj, list):  # List of expressions
         return [convert_sympy(x) for x in obj]
-    if isinstance(obj, dict):      # Dict with expressions
+    if isinstance(obj, dict):  # Dict with expressions
         return {k: convert_sympy(v) for k, v in obj.items()}
     return obj
+
+
 @app.route('/api/solve/linear', methods=['POST'])
 def linear_solve():
     try:
@@ -53,47 +55,49 @@ def linear_solve():
         initial_guess_str = data.get('initialGuess', [])
         max_iterations = data.get('maxIterations', 50)
         tolerance = float(data.get('tolerance', 0.00001))
-        symbolic  = data.get('symbolic', False)
+        symbolic = data.get('symbolic', False)
         n = len(matrix_str)
+
         if not symbolic:
             matrix = [[float(val) if val.strip() else 0.0 for val in row] for row in matrix_str]
             constants = [float(val) if val.strip() else 0.0 for val in constants_str]
             augmented = [matrix[i][:] + [constants[i]] for i in range(n)]
         else:
-            matrix =matrix_str
+            matrix = matrix_str
             constants = constants_str
             augmented = [matrix[i][:] + [constants[i]] for i in range(n)]
+
         if not symbolic:
             rankbro = SolutionType(augmented).gaussian_elimination()
             if (rankbro == 1):
                 message = "INCONSISTENT"
             elif (rankbro == 2):
                 message = "INFINITE NUMBER OF SOLUTIONS"
-
             else:
                 message = "Unique Solution exists"
         else:
             message = "works"
+
         solution = None
         iterations = None
         steps = []  # This will now hold full step strings
 
-        if method == 'gauss-elimination' and not(message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
+        if method == 'gauss-elimination' and not (
+                message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
             if scaling:
                 elim = ForwardEliminatorScaling(augmented.copy(), precision)
             else:
                 elim = ForwardEliminator(augmented.copy(), precision)
 
-            elim.eliminate()  # No more steps list
+            elim.eliminate()
             echelon, rank, pivots = elim.get_result()
 
             solver = SystemSolver(echelon, rank, n, pivots, precision)
-            solution = solver.solve()  # No steps param
+            solution = solver.solve()
 
-            # Combine all step strings
             steps = elim.step_strings + solver.step_strings
 
-        elif method == 'gauss-jordan' and not(message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
+        elif method == 'gauss-jordan' and not (message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
             if scaling:
                 elim = GaussJordanEliminatorScaling(augmented.copy(), precision)
             else:
@@ -106,20 +110,16 @@ def linear_solve():
             solution = solver.solve()
             steps = elim.step_strings + solver.step_strings
 
-
-        elif method == 'lu-decomposition'and not(message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
-
+        elif method == 'lu-decomposition' and not (
+                message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
             if lu_form == 'doolittle':
-
                 solver = LUSolver(precision)
-
                 solution = solver.solve(matrix.copy(), constants.copy())
-
-                steps = solver.step_strings  # ← Perfect list of full steps!
+                steps = solver.step_strings
             elif lu_form == 'crout':
                 crout = Crout_LU(augmented.copy(), n, precision)
                 solution = crout.solve()
-                steps = crout.step_strings  # assuming you update Crout_LU too
+                steps = crout.step_strings
             elif lu_form == 'cholesky':
                 cholesky = Chelosky_LU(augmented.copy(), n, precision)
                 solution = cholesky.solve()
@@ -129,7 +129,7 @@ def linear_solve():
 
         elif method in ['jacobi', 'gauss-seidel']:
             initial_guess = [float(val) if val.strip() else 0.0 for val in initial_guess_str]
-            solver = ItrativeMethods(n, matrix, constants, initial_guess,max_iterations , tolerance, precision)
+            solver = ItrativeMethods(n, matrix, constants, initial_guess, max_iterations, tolerance, precision)
 
             if method == 'jacobi':
                 if not symbolic:
@@ -144,7 +144,8 @@ def linear_solve():
                     steps = solver.getAnswer()
                 else:
                     solution = solver.symbolic_iterations(max_iterations, method)
-        execution_time = (time.time() - start_time)*1000
+
+        execution_time = (time.time() - start_time) * 1000
 
         if solution is not None and not symbolic:
             solution_str = [f"{val:.{precision}g}" for val in solution]
@@ -156,7 +157,7 @@ def linear_solve():
 
         response = {
             'solution': solution_str,
-            'executionTime': f"{execution_time:.10f}m",
+            'executionTime': f"{execution_time:.10f}ms",
             'steps': steps if step_by_step else [],
             'message': message,
         }
@@ -181,36 +182,49 @@ def linear_solve():
 @app.route('/api/plot', methods=['POST'])
 def plot():
     try:
-
         data = request.get_json()
         method = data.get('method')
         function = data.get('equation')
         function = function.replace("^", "**")
 
         if method == 'fixed-point':
-            return jsonify({'plotImage':plotter.get_plot_base64(function,True)})
+            return jsonify({'plotImage': plotter.get_plot_base64(function, True)})
         else:
-            return jsonify({'plotImage':plotter.get_plot_base64(function)})
+            return jsonify({'plotImage': plotter.get_plot_base64(function)})
     except Exception as e:
-        return jsonify({'error': f'Couldn\'t Plot '}), 500
+        return jsonify({'error': f'Couldn\'t Plot: {str(e)}'}), 500
 
 
-
-@app.route('/api/solve/nonlinear',methods=['POST'])
+@app.route('/api/solve/nonlinear', methods=['POST'])
 def nonlinear_solve():
     try:
         start_time = time.time()
         data = request.get_json()
         method = data.get('method')
         equation = data.get('equation')
-        xLower = float(data.get('xLower',0))
-        xUpper = float(data.get('xUpper',0))
-        x0 = float(data.get('x0',0))
-        x1 = float(data.get('x1',0))
-        precision = data.get('precision',5)
+
+        # Replace ^ with ** for Python evaluation
+        equation = equation.replace("^", "**")
+
+        xLower = float(data.get('xLower', 0))
+        xUpper = float(data.get('xUpper', 0))
+        x0 = float(data.get('x0', 0))
+        x1 = float(data.get('x1', 0))
+        precision = data.get('precision', 5)
         epsilon = float(data.get('eps', 0.00001))
-        maxIterations = data.get('maxIterations',50)
-        step_by_step = data.get('stepByStep')
+        maxIterations = data.get('maxIterations', 50)
+        step_by_step = data.get('stepByStep', True)
+
+        # For fixed-point method
+        g_equation = data.get('gEquation', '')
+        if g_equation:
+            g_equation = g_equation.replace("^", "**")
+
+        solution = None
+        steps = []
+        approximateError = None
+        iterations = 0
+        significant_figures = None
 
         if method == 'bisection':
             bi = bisection(equation, xLower, xUpper, epsilon, maxIterations, precision)
@@ -218,44 +232,90 @@ def nonlinear_solve():
             steps = bi.step_strings
             approximateError = bi.approximateError
             iterations = bi.iterations
+
         elif method == 'false-position':
             fs = falsePosition(equation, xLower, xUpper, epsilon, maxIterations, precision)
             solution = fs.solve()
             steps = fs.step_strings
             approximateError = fs.approximateError
             iterations = fs.iterations
+
         elif method == 'fixed-point':
-            #TODO: Some implementation here
-            pass
+            # g_equation is optional - if not provided, it will be derived automatically
+            fp = FixedPointMethod(
+                equation_str=equation,
+                initial_guess=x0,
+                g_equation_str=g_equation if g_equation else None,
+                epsilon=epsilon,
+                max_iterations=maxIterations,
+                precision=precision
+            )
+            result = fp.solve(show_steps=False)
+
+            solution = result['root']
+            steps = result['step_strings']
+            approximateError = result['relative_error']
+            iterations = result['iterations']
+            significant_figures = result['significant_figures']
+
         elif method == 'newton':
-            # TODO: Some implementation here
-            pass
+            nr = NewtonRaphsonMethod(
+                equation_str=equation,
+                initial_guess=x0,
+                epsilon=epsilon,
+                max_iterations=maxIterations,
+                precision=precision
+            )
+            result = nr.solve(show_steps=False)
+
+            solution = result['root']
+            steps = result['step_strings']
+            approximateError = result['relative_error']
+            iterations = result['iterations']
+            significant_figures = result['significant_figures']
+
         elif method == 'modified-newton':
-            # TODO: Some implementation here
-            pass
+            # TODO: Implement modified Newton-Raphson
+            return jsonify({'error': 'Modified Newton-Raphson not yet implemented'}), 501
+
         elif method == 'secant':
-            # TODO: Some implementation here
-            pass
+            # TODO: Implement Secant method
+            return jsonify({'error': 'Secant method not yet implemented'}), 501
+
         else:
             return jsonify({'error': f'Method {method} not supported'}), 400
+
         execution_time = (time.time() - start_time) * 1000
+
         response = {
-            'executionTime': f"{execution_time:.10f}m",
-            'steps': steps if step_by_step else [],
-            'approximateError': approximateError,
             'root': solution,
-            'iterations': iterations if iterations is not None else [],
-            'approximateError' : approximateError,
+            'iterations': iterations,
+            'approximateError': approximateError,
+            'executionTime': f"{execution_time:.10f}ms",
+            'steps': steps if step_by_step else [],
         }
+
+        if significant_figures is not None:
+            # Handle infinity and NaN for JSON serialization
+            if significant_figures == float('inf'):
+                response['significantFigures'] = None  # or a large number like 999
+            elif significant_figures != significant_figures:  # Check for NaN
+                response['significantFigures'] = None
+            else:
+                response['significantFigures'] = significant_figures
+
         return jsonify(response), 200
 
-
-
+    except ValueError as ve:
+        return jsonify({'error': f'Invalid input: {str(ve)}'}), 400
     except Exception as e:
         import traceback
         return jsonify({
-            'message': f'{e}',
+            'error': 'Internal solver error',
+            'details': str(e),
+            'trace': traceback.format_exc()
         }), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
