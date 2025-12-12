@@ -4,6 +4,7 @@ import time
 
 # Import your existing solver modules
 from Itrativemethods.ItrativeMethods import ItrativeMethods
+from nonlinear.ModifiedNewtonRaphsonMethod import ModifiedNewtonRaphsonMethod
 from linear_system import LinearSystem
 from nonlinear.falsePosition import falsePosition
 from nonlinear.bisection import bisection
@@ -275,8 +276,25 @@ def nonlinear_solve():
             significant_figures = result['significant_figures']
 
         elif method == 'modified-newton':
-            # TODO: Implement modified Newton-Raphson
-            return jsonify({'error': 'Modified Newton-Raphson not yet implemented'}), 501
+            multiplicity = data.get('multiplicity', None)
+            if multiplicity is not None:
+                multiplicity = int(multiplicity)
+            
+            mnr = ModifiedNewtonRaphsonMethod(
+                equation_str=equation,
+                initial_guess=x0,
+                multiplicity=multiplicity,  # Can be None or an integer
+                epsilon=epsilon,
+                max_iterations=maxIterations,
+                precision=precision
+            )
+            result = mnr.solve(show_steps=False)
+            
+            solution = result['root']
+            steps = result['step_strings']
+            approximateError = result['relative_error']
+            iterations = result['iterations']
+            significant_figures = result['significant_figures']
 
         elif method == 'secant':
             # TODO: Implement Secant method
