@@ -26,6 +26,15 @@
         </div>
 
         <div class="space-y-4">
+          @if (method === 'fixed-point') {
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enter your g(x) function for x = g(x)</label>
+            <input type="text" [(ngModel)]="gEquation" [disabled]="loading"
+              class=" p-4 block w-full text-lg px-4 py-3 bg-white dark:bg-gray-600 text-black dark:text-gray-200 border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono"
+              placeholder="e.g., cos(x), sqrt(4), (x^2 + 4)/5" />
+            <p class="mt-1 text-xs text-gray-400">Enter the rearranged form where x = g(x). Supported functions: poly, exp, cos, sin, tan, ln, sqrt, etc.</p>
+          </div>
+          } @else {
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enter your equation f(x) =
               0</label>
@@ -34,6 +43,7 @@
               placeholder="e.g., x^2 - 4, exp(x) - 2, cos(x) - x, sin(x)" />
             <p class="mt-1 text-xs text-gray-400">Supported functions: poly, exp, cos, sin, tan, ln, sqrt, etc.</p>
           </div>
+          }
         </div>
       </div>
 
@@ -98,21 +108,7 @@
           </div>
           }
 
-          <!-- ADD THIS BLOCK -->
-          @if (method === 'fixed-point') {
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              g(x) Function <span class="text-xs text-gray-500">(optional - leave blank for auto)</span>
-            </label>
-            <input type="text" [(ngModel)]="gEquation" [disabled]="loading"
-              class="p-3 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono"
-              placeholder="e.g., sqrt(4), (x^2 + 4)/5" />
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Rearrange f(x)=0 to x=g(x). If blank, will be derived automatically.
-            </p>
-          </div>
-          }
-          <!-- END OF ADDED BLOCK -->
+
         </div>
         }
 
