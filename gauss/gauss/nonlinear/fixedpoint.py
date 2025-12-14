@@ -32,6 +32,7 @@ class FixedPointMethod:
         self.converged = False
         self.error_message = None
         self.step_strings = []
+        self.last_significant_figures = 0
 
 
 
@@ -135,6 +136,8 @@ class FixedPointMethod:
                     sig_figs = 15  # Exact solution
                 else:
                     sig_figs = self.count_significant_figures(x_new, x_old)
+                
+                self.last_significant_figures = sig_figs  # Store the last computed significant figures
 
                 x_old_rounded = self.round_sig(x_old)
                 x_new_rounded = self.round_sig(x_new)
@@ -258,7 +261,8 @@ class FixedPointMethod:
             'converged': self.converged,
             'error_message': self.error_message,
             'iteration_history': self.iteration_history,
-            'step_strings': self.step_strings
+            'step_strings': self.step_strings,
+            'significant_figures': self.last_significant_figures
         }
 
     def print_results(self):

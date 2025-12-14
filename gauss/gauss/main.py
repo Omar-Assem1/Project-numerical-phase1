@@ -279,6 +279,7 @@ def nonlinear_solve():
             steps = result['step_strings']
             approximateError = result['relative_error']
             iterations = result['iterations']
+            significant_figures = result['significant_figures']
 
         elif method == 'newton':
             nr = NewtonRaphsonMethod(
