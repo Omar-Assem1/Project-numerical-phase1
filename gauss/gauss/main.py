@@ -311,7 +311,7 @@ def nonlinear_solve():
     except Exception as e:
         import traceback
         return jsonify({
-            'error': 'Internal solver error',
+            'error': str(e),
             'details': str(e),
             'trace': traceback.format_exc()
         }), 500
