@@ -40,7 +40,6 @@ def exponential_and_trig_examples():
     print("=" * 80)
 
     solver2 = FixedPointMethod(
-        equation_str="exp(x) - 3*x",
         g_equation_str="exp(x) / 3",
         initial_guess=1.5,
         epsilon=0.00001,
@@ -69,7 +68,6 @@ def exponential_and_trig_examples():
     print("=" * 80)
 
     solver4 = FixedPointMethod(
-        equation_str="exp(-x) - x",
         g_equation_str="exp(-x)",
         initial_guess=0.5,
         epsilon=0.00001,
@@ -116,7 +114,6 @@ def exponential_and_trig_examples():
     print("=" * 80)
 
     solver7 = FixedPointMethod(
-        equation_str="cos(x) - x",
         g_equation_str="cos(x)",
         initial_guess=0.5,
         epsilon=0.00001,
@@ -145,7 +142,6 @@ def exponential_and_trig_examples():
     print("=" * 80)
 
     solver9 = FixedPointMethod(
-        equation_str="cos(x) - 2*x",
         g_equation_str="cos(x)/2",
         initial_guess=0.3,
         epsilon=0.00001,
@@ -178,7 +174,6 @@ def exponential_and_trig_examples():
     print("=" * 80)
 
     solver11 = FixedPointMethod(
-        equation_str="sin(x) - x/2",
         g_equation_str="2*sin(x)",
         initial_guess=1.5,
         epsilon=0.00001,

@@ -58,6 +58,7 @@ export class RootFinderComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Initialize with example equation
     this.equation = 'x^2 - 4';
+    this.gEquation = 'cos(x)';
     this.xLower = '-5';
     this.xUpper = '5';
     this.x0 = '1';
@@ -92,7 +93,7 @@ export class RootFinderComponent implements OnInit, OnDestroy {
 
     const payload: RootFindingRequest = {
       method: this.method,
-      equation: this.equation,
+      equation: this.method === 'fixed-point' ? '' : this.equation, // Empty equation for fixed-point
       precision: this.precision,
       eps: this.eps,
       maxIterations: this.maxIterations,
@@ -105,7 +106,7 @@ export class RootFinderComponent implements OnInit, OnDestroy {
       payload.xUpper = this.xUpper;
     } else if (this.requiresSingleGuess()) {
       payload.x0 = this.x0;
-      if (this.method === 'fixed-point' && this.gEquation) {
+      if (this.method === 'fixed-point') {
         payload.gEquation = this.gEquation;
       }
     } else if (this.requiresTwoGuesses()) {
@@ -140,8 +141,8 @@ export class RootFinderComponent implements OnInit, OnDestroy {
 
     const payload: PlotRequest = {
       method: this.method,
-      equation: this.equation,
-      gEquation: this.gEquation
+      equation: this.method === 'fixed-point' ? '' : this.equation,
+      gEquation: this.method === 'fixed-point' ? this.gEquation : this.gEquation
     };
 
     this.apiService.getPlot(payload).subscribe({
@@ -213,6 +214,7 @@ export class RootFinderComponent implements OnInit, OnDestroy {
   // Reset all inputs
   clearAll(): void {
     this.equation = '';
+    this.gEquation = '';
     this.xLower = '';
     this.xUpper = '';
     this.x0 = '';

@@ -8,14 +8,13 @@ class NewtonRaphsonMethod:
 
 
     def __init__(self, equation_str, initial_guess,
-                 epsilon=0.00001, max_iterations=50, significant_figures=None, precision=5):
+                 epsilon=0.00001, max_iterations=50, significant_figures=5):
 
         self.equation_str = equation_str
         self.x0 = initial_guess
         self.epsilon = epsilon
         self.max_iterations = max_iterations
-        self.significant_figures = significant_figures if significant_figures is not None else precision
-        self.precision = precision
+        self.significant_figures = significant_figures
 
         # Parse equation and compute derivative
         self.x = sp.Symbol('x')
@@ -44,12 +43,15 @@ class NewtonRaphsonMethod:
             raise ValueError(f"Error evaluating function at x={x_val}: {e}")
 
     def round_sig(self, x):
-        """Round number to specified precision using significant figures."""
+        """Round number to specified significant figures."""
         if x == 0:
             return 0.0
-        x_str = str(x)
-        ctx = Context(prec=self.precision)
-        return float(ctx.create_decimal(x_str).normalize())
+        try:
+            x_str = str(x)
+            ctx = Context(prec=self.significant_figures)
+            return float(ctx.create_decimal(x_str).normalize())
+        except:
+            return float(x)
 
     def calculate_relative_error(self, x_new, x_old):
         """Calculate approximate relative error."""
@@ -120,7 +122,7 @@ class NewtonRaphsonMethod:
                 # Check if derivative is zero
                 if abs(f_prime_val) < 1e-12:
                     self.error_message = (
-                        f"Derivative is zero at x = {x_old:.{self.precision}f}. "
+                        f"Derivative is zero at x = {x_old:.{self.significant_figures}g}. "
                         "Cannot continue with Newton-Raphson method."
                     )
                     self.step_strings.append(self.error_message)
@@ -155,11 +157,11 @@ class NewtonRaphsonMethod:
                 # Add iteration as a single step string
                 iteration_step = [
                     f"Iteration {i + 1}:",
-                    f"  x_{i} = {x_old:.{self.precision}f}",
-                    f"  f(x_{i}) = {f_val:.{self.precision}e}",
-                    f"  f'(x_{i}) = {f_prime_val:.{self.precision}e}",
-                    f"  x_{i + 1} = x_{i} - f(x_{i})/f'(x_{i}) = {x_new:.{self.precision}f}",
-                    f"  f(x_{i + 1}) = {f_new_val:.{self.precision}e}",
+                    f"  x_{i} = {x_old:.{self.significant_figures}g}",
+                    f"  f(x_{i}) = {f_val:.{self.significant_figures}g}",
+                    f"  f'(x_{i}) = {f_prime_val:.{self.significant_figures}g}",
+                    f"  x_{i + 1} = x_{i} - f(x_{i})/f'(x_{i}) = {x_new:.{self.significant_figures}g}",
+                    f"  f(x_{i + 1}) = {f_new_val:.{self.significant_figures}g}",
                     f"  |εₐ| = {rel_error:.6f}%",
                     f"  Significant figures: {sig_figs}"
                 ]
@@ -176,23 +178,23 @@ class NewtonRaphsonMethod:
                     print(f"  Significant figures: {sig_figs}")
                     print()
 
-                # Check convergence based on relative error
-                if rel_error < self.epsilon:
+                # Convergence checks - either condition can be satisfied
+                epsilon_satisfied = rel_error < self.epsilon
+                precision_satisfied = self.significant_figures and sig_figs >= self.significant_figures
+                
+                if epsilon_satisfied:
                     self.converged = True
                     self.root = x_new
                     self.iterations = i + 1
                     self.relative_error = rel_error
-                    self.step_strings.append(f"✓ Converged! Relative error {rel_error:.6f}% < {self.epsilon}")
+                    self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% < {self.epsilon}")
                     break
-
-                # Check if significant figures requirement is met
-                if self.significant_figures and sig_figs >= self.significant_figures:
+                elif precision_satisfied:
                     self.converged = True
                     self.root = x_new
                     self.iterations = i + 1
                     self.relative_error = rel_error
-                    self.step_strings.append(
-                        f"✓ Converged! Significant figures {sig_figs} >= {self.significant_figures}")
+                    self.step_strings.append(f"✓ Converged! {sig_figs} >= {self.significant_figures} sig figs")
                     break
 
                 # Check if function value is close to zero
@@ -234,13 +236,13 @@ class NewtonRaphsonMethod:
         if self.converged:
             results.extend([
                 "✓ Method converged successfully!",
-                f"Approximate root: {self.root:.{self.precision}f}",
-                f"f(root) = {self.evaluate_function(self.f, self.root):.{self.precision}e}"
+                f"Approximate root: {self.root:.{self.significant_figures}g}",
+                f"f(root) = {self.evaluate_function(self.f, self.root):.{self.significant_figures}g}"
             ])
         else:
             results.append("✗ Method did not converge")
             if self.root:
-                results.append(f"Last approximation: {self.root:.{self.precision}f}")
+                results.append(f"Last approximation: {self.root:.{self.significant_figures}g}")
 
         results.append(f"Number of iterations: {self.iterations}")
         if self.relative_error is not None:
@@ -259,16 +261,10 @@ class NewtonRaphsonMethod:
 
     def get_results(self):
         """Return results as a dictionary."""
-        sig_figs = 0
-        if self.converged and len(self.iteration_history) >= 1:
-            last_iter = self.iteration_history[-1]
-            sig_figs = last_iter['significant_figures']
-
         return {
             'root': self.root,
             'iterations': self.iterations,
             'relative_error': self.relative_error,
-            'significant_figures': sig_figs,
             'execution_time': self.execution_time,
             'converged': self.converged,
             'error_message': self.error_message,
