@@ -264,12 +264,11 @@ def nonlinear_solve():
 
         elif method == 'fixed-point':
             fp = FixedPointMethod(
-                equation_str=equation,
+                g_equation_str=g_equation,
                 initial_guess=x0,
-                g_equation_str=g_equation if g_equation else None,
                 epsilon=epsilon,
                 max_iterations=maxIterations,
-                precision=precision
+                significant_figures=precision
             )
             result = fp.solve(show_steps=False)
 
@@ -277,7 +276,6 @@ def nonlinear_solve():
             steps = result['step_strings']
             approximateError = result['relative_error']
             iterations = result['iterations']
-            significant_figures = result['significant_figures']
 
         elif method == 'newton':
             nr = NewtonRaphsonMethod(
@@ -285,7 +283,7 @@ def nonlinear_solve():
                 initial_guess=x0,
                 epsilon=epsilon,
                 max_iterations=maxIterations,
-                precision=precision
+                significant_figures=precision
             )
             result = nr.solve(show_steps=False)
 
@@ -293,7 +291,6 @@ def nonlinear_solve():
             steps = result['step_strings']
             approximateError = result['relative_error']
             iterations = result['iterations']
-            significant_figures = result['significant_figures']
 
         elif method == 'modified-newton':
             multiplicity = data.get('multiplicity', None)
