@@ -19,6 +19,7 @@ export class RootFinderComponent implements OnInit, OnDestroy {
   xUpper: string = '';
   x0: string = '';
   x1: string = '';
+  gEquation: string = '';
   precision: number = 5;
   eps: number = 0.00001;
   maxIterations: number = 50;
@@ -102,6 +103,9 @@ export class RootFinderComponent implements OnInit, OnDestroy {
       payload.xUpper = this.xUpper;
     } else if (this.requiresSingleGuess()) {
       payload.x0 = this.x0;
+      if (this.method === 'fixed-point' && this.gEquation) {  // ADD THIS
+        payload.gEquation = this.gEquation;                    // ADD THIS
+      }
     } else if (this.requiresTwoGuesses()) {
       payload.x0 = this.x0;
       payload.x1 = this.x1;
@@ -119,7 +123,7 @@ export class RootFinderComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
       error: (error) => {
-        this.errorMessage = error.error?.message || 'An error occurred while solving';
+        this.errorMessage = error.error?.error || error.error?.message || 'An error occurred while solving';
         this.loading = false;
         this.cdr.detectChanges();
       }

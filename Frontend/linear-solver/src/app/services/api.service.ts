@@ -25,6 +25,7 @@ export interface RootFindingRequest {
   xUpper?: string;
   x0?: string;
   x1?: string;
+  gEquation?: string;
   precision?: number;
   eps: number;
   maxIterations: number;

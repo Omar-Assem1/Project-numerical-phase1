@@ -4,11 +4,13 @@ import time
 
 # Import your existing solver modules
 from Itrativemethods.ItrativeMethods import ItrativeMethods
+from nonlinear.ModifiedNewtonRaphsonMethod import ModifiedNewtonRaphsonMethod
 from linear_system import LinearSystem
 from nonlinear.falsePosition import falsePosition
 from nonlinear.bisection import bisection
 from nonlinear.fixedpoint import FixedPointMethod
 from nonlinear.original_newton_raph import NewtonRaphsonMethod
+from nonlinear.secant import Secant
 
 from rank import SolutionType
 from classes.forward_eliminator import ForwardEliminator
@@ -24,19 +26,37 @@ from chelosky_crout import Crout_LU, Chelosky_LU
 from nonlinear import plotter
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for Angular frontend
+CORS(app)
 
 
 def convert_sympy(obj):
     from sympy import Basic
 
-    if isinstance(obj, Basic):  # Single SymPy expression
+    if isinstance(obj, Basic):
         return str(obj)
-    if isinstance(obj, list):  # List of expressions
+    if isinstance(obj, list):
         return [convert_sympy(x) for x in obj]
-    if isinstance(obj, dict):  # Dict with expressions
+    if isinstance(obj, dict):
         return {k: convert_sympy(v) for k, v in obj.items()}
     return obj
+
+
+def format_error_message(error_msg):
+    """Format error messages for better frontend display."""
+    # Replace multiple newlines with single ones
+    formatted = error_msg.replace('\n\n\n', '\n\n')
+    
+    # Split into lines for processing
+    lines = formatted.split('\n')
+    formatted_lines = []
+    
+    for line in lines:
+        # Clean up extra spaces
+        clean_line = ' '.join(line.split())
+        if clean_line:  # Only add non-empty lines
+            formatted_lines.append(clean_line)
+    
+    return '\n'.join(formatted_lines)
 
 
 @app.route('/api/solve/linear', methods=['POST'])
@@ -80,7 +100,7 @@ def linear_solve():
 
         solution = None
         iterations = None
-        steps = []  # This will now hold full step strings
+        steps = []
 
         if method == 'gauss-elimination' and not (
                 message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
@@ -241,7 +261,6 @@ def nonlinear_solve():
             iterations = fs.iterations
 
         elif method == 'fixed-point':
-            # g_equation is optional - if not provided, it will be derived automatically
             fp = FixedPointMethod(
                 equation_str=equation,
                 initial_guess=x0,
@@ -275,12 +294,39 @@ def nonlinear_solve():
             significant_figures = result['significant_figures']
 
         elif method == 'modified-newton':
-            # TODO: Implement modified Newton-Raphson
-            return jsonify({'error': 'Modified Newton-Raphson not yet implemented'}), 501
+            multiplicity = data.get('multiplicity', None)
+            if multiplicity is not None:
+                multiplicity = int(multiplicity)
+
+            mnr = ModifiedNewtonRaphsonMethod(
+                equation_str=equation,
+                initial_guess=x0,
+                multiplicity=multiplicity,
+                epsilon=epsilon,
+                max_iterations=maxIterations,
+                precision=precision
+            )
+            result = mnr.solve(show_steps=False)
+
+            solution = result['root']
+            steps = result['step_strings']
+            approximateError = result['relative_error']
+            iterations = result['iterations']
+            significant_figures = result['significant_figures']
 
         elif method == 'secant':
-            # TODO: Implement Secant method
-            return jsonify({'error': 'Secant method not yet implemented'}), 501
+            sec = Secant(
+                f=equation,
+                x0=x0,
+                x1=x1,
+                tol=epsilon,
+                maxiter=maxIterations,
+                precision=precision
+            )
+            solution = sec.solve()
+            steps = sec.step_strings
+            approximateError = sec.approximateError
+            iterations = sec.iterations
 
         else:
             return jsonify({'error': f'Method {method} not supported'}), 400
@@ -295,10 +341,33 @@ def nonlinear_solve():
             'steps': steps if step_by_step else [],
         }
 
+        # Add user-friendly message based on method results
+        if method in ['fixed-point', 'newton', 'modified-newton']:
+            result_obj = locals().get('result', {})
+            if result_obj.get('converged'):
+                response['message'] = '✓ Method converged successfully!'
+            elif result_obj.get('error_message'):
+                response['message'] = f"✗ {result_obj['error_message']}"
+            else:
+                response['message'] = '✗ Method did not converge'
+        elif method in ['bisection', 'false-position']:
+            solver_obj = locals().get('bi') or locals().get('fs')
+            if solver_obj and hasattr(solver_obj, 'converged'):
+                if solver_obj.converged:
+                    response['message'] = '✓ Method converged successfully!'
+                else:
+                    response['message'] = '✗ Method did not converge'
+        elif method == 'secant':
+            sec_obj = locals().get('sec')
+            if sec_obj and hasattr(sec_obj, 'converged'):
+                if sec_obj.converged:
+                    response['message'] = '✓ Method converged successfully!'
+                else:
+                    response['message'] = '✗ Method did not converge'
+
         if significant_figures is not None:
-            # Handle infinity and NaN for JSON serialization
             if significant_figures == float('inf'):
-                response['significantFigures'] = None  # or a large number like 999
+                response['significantFigures'] = None
             elif significant_figures != significant_figures:  # Check for NaN
                 response['significantFigures'] = None
             else:
@@ -307,7 +376,20 @@ def nonlinear_solve():
         return jsonify(response), 200
 
     except ValueError as ve:
-        return jsonify({'error': f'Invalid input: {str(ve)}'}), 400
+        error_msg = str(ve)
+        
+        # Handle g(x) validation error specifically
+        if "g(x) is not derived from f(x)" in error_msg:
+            return jsonify({'error': 'g(x) is not derived from f(x)'}), 400
+        elif "Invalid g(x) function" in error_msg or "🚫 Invalid g(x) Function" in error_msg:
+            formatted_error = format_error_message(error_msg)
+            return jsonify({
+                'error': 'Invalid g(x) Function',
+                'message': formatted_error,
+                'type': 'validation_error'
+            }), 400
+        else:
+            return jsonify({'error': f'Invalid input: {format_error_message(error_msg)}'}), 400
     except Exception as e:
         import traceback
         return jsonify({
