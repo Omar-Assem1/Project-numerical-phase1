@@ -308,12 +308,12 @@
               }}</span>
           </div>
           }
-          <!--          @if (result.significantFigures) {-->
-          <!--          <div class="flex items-center gap-2">-->
-          <!--            <span class="text-gray-500 dark:text-gray-400">Sig. Figs:</span>-->
-          <!--            <span class="font-mono font-semibold text-indigo-700">{{ result.significantFigures }}</span>-->
-          <!--          </div>-->
-          <!--          }-->
+                    @if (result.significantFigures) {
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-500 dark:text-gray-400">Sig. Figs:</span>
+                      <span class="font-mono font-semibold text-indigo-700 dark:text-teal-500">{{ result.significantFigures }}</span>
+                    </div>
+                    }
         </div>
       </div>
 
