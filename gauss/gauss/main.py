@@ -10,7 +10,7 @@ from nonlinear.falsePosition import falsePosition
 from nonlinear.bisection import bisection
 from nonlinear.fixedpoint import FixedPointMethod
 from nonlinear.original_newton_raph import NewtonRaphsonMethod
-from nonlinear.secant import Secant  # Import the new Secant class
+from nonlinear.secant import Secant
 
 from rank import SolutionType
 from classes.forward_eliminator import ForwardEliminator
@@ -26,17 +26,17 @@ from chelosky_crout import Crout_LU, Chelosky_LU
 from nonlinear import plotter
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for Angular frontend
+CORS(app)
 
 
 def convert_sympy(obj):
     from sympy import Basic
 
-    if isinstance(obj, Basic):  # Single SymPy expression
+    if isinstance(obj, Basic):
         return str(obj)
-    if isinstance(obj, list):  # List of expressions
+    if isinstance(obj, list):
         return [convert_sympy(x) for x in obj]
-    if isinstance(obj, dict):  # Dict with expressions
+    if isinstance(obj, dict):
         return {k: convert_sympy(v) for k, v in obj.items()}
     return obj
 
@@ -82,7 +82,7 @@ def linear_solve():
 
         solution = None
         iterations = None
-        steps = []  # This will now hold full step strings
+        steps = []
 
         if method == 'gauss-elimination' and not (
                 message == "INCONSISTENT" or message == "INFINITE NUMBER OF SOLUTIONS"):
@@ -243,7 +243,6 @@ def nonlinear_solve():
             iterations = fs.iterations
 
         elif method == 'fixed-point':
-            # g_equation is optional - if not provided, it will be derived automatically
             fp = FixedPointMethod(
                 equation_str=equation,
                 initial_guess=x0,
@@ -284,7 +283,7 @@ def nonlinear_solve():
             mnr = ModifiedNewtonRaphsonMethod(
                 equation_str=equation,
                 initial_guess=x0,
-                multiplicity=multiplicity,  # Can be None or an integer
+                multiplicity=multiplicity,
                 epsilon=epsilon,
                 max_iterations=maxIterations,
                 precision=precision
@@ -298,7 +297,6 @@ def nonlinear_solve():
             significant_figures = result['significant_figures']
 
         elif method == 'secant':
-            # Secant method implementation
             sec = Secant(
                 f=equation,
                 x0=x0,
@@ -350,9 +348,8 @@ def nonlinear_solve():
                     response['message'] = '✗ Method did not converge'
 
         if significant_figures is not None:
-            # Handle infinity and NaN for JSON serialization
             if significant_figures == float('inf'):
-                response['significantFigures'] = None  # or a large number like 999
+                response['significantFigures'] = None
             elif significant_figures != significant_figures:  # Check for NaN
                 response['significantFigures'] = None
             else:

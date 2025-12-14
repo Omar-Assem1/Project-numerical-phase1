@@ -65,14 +65,33 @@
         }
 
         <!-- Single initial guess for Fixed Point, Newton-Raphson -->
+        <!-- Single initial guess for Fixed Point, Newton-Raphson -->
         @if (requiresSingleGuess()) {
-        <div class="animate-fade-in">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Initial Guess
-            (x<sub>0</sub>)</label>
-          <input type="text" [(ngModel)]="x0" [disabled]="loading"
-            class="p-3 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="e.g., 1" />
-        </div>
+          <div class="space-y-4 animate-fade-in">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Initial Guess
+                (x<sub>0</sub>)</label>
+              <input type="text" [(ngModel)]="x0" [disabled]="loading"
+                     class="p-3 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                     placeholder="e.g., 1" />
+            </div>
+
+            <!-- ADD THIS BLOCK -->
+            @if (method === 'fixed-point') {
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  g(x) Function <span class="text-xs text-gray-500">(optional - leave blank for auto)</span>
+                </label>
+                <input type="text" [(ngModel)]="gEquation" [disabled]="loading"
+                       class="p-3 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm font-mono"
+                       placeholder="e.g., sqrt(4), (x^2 + 4)/5" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Rearrange f(x)=0 to x=g(x). If blank, will be derived automatically.
+                </p>
+              </div>
+            }
+            <!-- END OF ADDED BLOCK -->
+          </div>
         }
 
         <!-- Two initial guesses for Secant Method -->
