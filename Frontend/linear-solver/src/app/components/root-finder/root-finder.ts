@@ -123,7 +123,7 @@ export class RootFinderComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
       error: (error) => {
-        this.errorMessage = error.error?.message || 'An error occurred while solving';
+        this.errorMessage = error.error?.error || error.error?.message || 'An error occurred while solving';
         this.loading = false;
         this.cdr.detectChanges();
       }

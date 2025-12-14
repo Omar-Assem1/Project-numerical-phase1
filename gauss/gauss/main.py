@@ -41,6 +41,24 @@ def convert_sympy(obj):
     return obj
 
 
+def format_error_message(error_msg):
+    """Format error messages for better frontend display."""
+    # Replace multiple newlines with single ones
+    formatted = error_msg.replace('\n\n\n', '\n\n')
+    
+    # Split into lines for processing
+    lines = formatted.split('\n')
+    formatted_lines = []
+    
+    for line in lines:
+        # Clean up extra spaces
+        clean_line = ' '.join(line.split())
+        if clean_line:  # Only add non-empty lines
+            formatted_lines.append(clean_line)
+    
+    return '\n'.join(formatted_lines)
+
+
 @app.route('/api/solve/linear', methods=['POST'])
 def linear_solve():
     try:
@@ -358,7 +376,20 @@ def nonlinear_solve():
         return jsonify(response), 200
 
     except ValueError as ve:
-        return jsonify({'error': f'Invalid input: {str(ve)}'}), 400
+        error_msg = str(ve)
+        
+        # Handle g(x) validation error specifically
+        if "g(x) is not derived from f(x)" in error_msg:
+            return jsonify({'error': 'g(x) is not derived from f(x)'}), 400
+        elif "Invalid g(x) function" in error_msg or "🚫 Invalid g(x) Function" in error_msg:
+            formatted_error = format_error_message(error_msg)
+            return jsonify({
+                'error': 'Invalid g(x) Function',
+                'message': formatted_error,
+                'type': 'validation_error'
+            }), 400
+        else:
+            return jsonify({'error': f'Invalid input: {format_error_message(error_msg)}'}), 400
     except Exception as e:
         import traceback
         return jsonify({
