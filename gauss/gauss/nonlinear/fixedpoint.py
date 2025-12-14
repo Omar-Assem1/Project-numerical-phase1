@@ -11,7 +11,7 @@ class FixedPointMethod:
 
         self.g_equation_str = g_equation_str
         self.x0 = initial_guess
-        self.epsilon = epsilon
+        self.epsilon = epsilon * 100  # Convert to percentage to match relative error calculation
         self.max_iterations = max_iterations
         self.significant_figures = significant_figures
 
@@ -92,7 +92,7 @@ class FixedPointMethod:
             "=" * 70,
             f"Iteration form: x = g(x) = {self.g_equation_str}",
             f"Initial guess: x₀ = {self.x0}",
-            f"Tolerance (ε): {self.epsilon}",
+            f"Tolerance (ε): {self.epsilon/100} ({self.epsilon}%)",
             f"Max iterations: {self.max_iterations}",
             "=" * 70
         ]
@@ -158,23 +158,16 @@ class FixedPointMethod:
                 if show_steps:
                     print("\n".join(iteration_step))
 
-                # Convergence checks - either condition can be satisfied
-                epsilon_satisfied = math.isfinite(rel_error) and rel_error < self.epsilon
+                # Convergence checks - both conditions must be satisfied for strict epsilon accuracy
+                epsilon_satisfied = math.isfinite(rel_error) and rel_error <= self.epsilon
                 precision_satisfied = self.significant_figures and sig_figs >= self.significant_figures
                 
-                if epsilon_satisfied:
+                if epsilon_satisfied and precision_satisfied:
                     self.converged = True
                     self.root = x_new_rounded
                     self.iterations = i + 1
                     self.relative_error = rel_error
-                    self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% < {self.epsilon}")
-                    break
-                elif precision_satisfied:
-                    self.converged = True
-                    self.root = x_new_rounded
-                    self.iterations = i + 1
-                    self.relative_error = rel_error
-                    self.step_strings.append(f"✓ Converged! {sig_figs} >= {self.significant_figures} sig figs")
+                    self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% <= {self.epsilon} AND {sig_figs} >= {self.significant_figures} sig figs")
                     break
 
                 if i > 5 and abs(x_new) > 1e10:
@@ -223,7 +216,7 @@ class FixedPointMethod:
         else:
             results.extend([
                 "✗ Method did not converge",
-                f"Best approximation: {self.round_sig(self.root)}"
+                f"Approximate root: {self.round_sig(self.root)}"
             ])
             if self.error_message:
                 results.append(f"Reason: {self.error_message}")

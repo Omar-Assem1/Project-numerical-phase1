@@ -12,7 +12,7 @@ class NewtonRaphsonMethod:
 
         self.equation_str = equation_str
         self.x0 = initial_guess
-        self.epsilon = epsilon
+        self.epsilon = epsilon * 100  # Convert to percentage to match relative error calculation
         self.max_iterations = max_iterations
         self.significant_figures = significant_figures
 
@@ -104,7 +104,7 @@ class NewtonRaphsonMethod:
             f"Equation: f(x) = {self.equation_str}",
             f"Derivative: f'(x) = {self.f_prime}",
             f"Initial guess: x₀ = {self.x0}",
-            f"Tolerance (ε): {self.epsilon}",
+            f"Tolerance (ε): {self.epsilon/100} ({self.epsilon}%)",
             f"Max iterations: {self.max_iterations}",
             "=" * 70
         ]
@@ -189,23 +189,16 @@ class NewtonRaphsonMethod:
                     print(f"  Significant figures: {sig_figs}")
                     print()
 
-                # Convergence checks - either condition can be satisfied
-                epsilon_satisfied = rel_error < self.epsilon
+                # Convergence checks - both conditions must be satisfied for strict epsilon accuracy
+                epsilon_satisfied = rel_error <= self.epsilon
                 precision_satisfied = self.significant_figures and sig_figs >= self.significant_figures
                 
-                if epsilon_satisfied:
+                if epsilon_satisfied and precision_satisfied:
                     self.converged = True
                     self.root = x_new
                     self.iterations = i + 1
                     self.relative_error = rel_error
-                    self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% < {self.epsilon}")
-                    break
-                elif precision_satisfied:
-                    self.converged = True
-                    self.root = x_new
-                    self.iterations = i + 1
-                    self.relative_error = rel_error
-                    self.step_strings.append(f"✓ Converged! {sig_figs} >= {self.significant_figures} sig figs")
+                    self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% <= {self.epsilon} AND {sig_figs} >= {self.significant_figures} sig figs")
                     break
 
                 # Check if function value is close to zero
@@ -230,7 +223,7 @@ class NewtonRaphsonMethod:
             self.relative_error = rel_error if 'rel_error' in locals() else float('inf')
             self.error_message = (
                 f"Method did not converge within {self.max_iterations} iterations. "
-                f"Last approximation: {self.root:.10f}"
+                f"Approximate root: {self.root:.{self.significant_figures}g}"
             )
             self.step_strings.append(self.error_message)
 
@@ -253,7 +246,9 @@ class NewtonRaphsonMethod:
         else:
             results.append("✗ Method did not converge")
             if self.root:
-                results.append(f"Last approximation: {self.root:.{self.significant_figures}g}")
+                results.append(f"Approximate root: {self.root:.{self.significant_figures}g}")
+            if self.error_message:
+                results.append(f"Reason: {self.error_message}")
 
         results.append(f"Number of iterations: {self.iterations}")
         if self.relative_error is not None:
