@@ -339,7 +339,7 @@ def nonlinear_solve():
             'root': solution,
             'iterations': iterations,
             'approximateError': approximateError,
-            'executionTime': f"{execution_time:.10f}ms",
+            'executionTime': f"{execution_time:.10f}m",
             'steps': steps if step_by_step else [],
         }
 
@@ -383,7 +383,7 @@ def nonlinear_solve():
         # Handle g(x) validation error specifically
         if "g(x) is not derived from f(x)" in error_msg:
             return jsonify({'error': 'g(x) is not derived from f(x)'}), 400
-        elif "Invalid g(x) function" in error_msg or "🚫 Invalid g(x) Function" in error_msg:
+        elif "Invalid g(x) function" in error_msg or "Invalid g(x) Function" in error_msg:
             formatted_error = format_error_message(error_msg)
             return jsonify({
                 'error': 'Invalid g(x) Function',

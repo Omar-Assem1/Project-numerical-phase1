@@ -41,11 +41,12 @@ class falsePosition:
             self.step_strings.append(
                 f"Step {stepCounter} \n =========== \n\n Regula Falsi Fails: Initial guesses do not bracket the root.")
             raise Exception("False Position Fails: The product of F(Xl)*F(Xu) > 0")
+        elif (fxl * fxu == 0):
+            raise Exception("False Position Fails: The product of F(Xl) * F(Xu) = 0")
         else:
             xr_old = xl
 
             for i in range(1, self.imax + 1):
-                stepCounter += 1
                 numerator = (xl * fxu) - (xu * fxl)
                 denominator = fxu - fxl
 
@@ -78,6 +79,7 @@ class falsePosition:
                 self.step_strings.append(f"Step {stepCounter}, iteration {i} \n =========== \n\n "
                                          f"Xl = {xl} \n Xu = {xu} \n Root = {xr} \n Relative Error = {ea} \n fxr= {fxr}")
 
+                stepCounter += 1
                 if (ea < self.es):
                     self.step_strings.append(f"Final Result \n =========== \n\n"
                                              f" Root after iteration {i} = {xr}\n"

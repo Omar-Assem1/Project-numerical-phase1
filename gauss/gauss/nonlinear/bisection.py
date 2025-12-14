@@ -37,10 +37,11 @@ class bisection:
             print("Bisection Fails")
             self.step_strings.append(f"Step {stepCounter} \n =========== \n\n Bisection Fails")
             raise Exception("Bisection Fails: The product of F(Xl)*F(Xu) > 0")
+        elif (fxl * fxu == 0):
+            raise Exception("Bisection Fails: The product of F(Xl) * F(Xu) = 0")
         else:
             xr_old = xl
             for i in range(1, self.imax):
-                stepCounter += 1
                 xr = self.round_sig((xu + xl) / 2)
                 fxr = self.round_sig(f_expr.subs({self.xsym: xr}))
                 ea = self.round_sig(abs((xr - xr_old) / xr))
@@ -54,6 +55,7 @@ class bisection:
                 self.xr = xr
                 self.step_strings.append(f"Step {stepCounter}, iteration {i} \n =========== \n\n "
                                          f"Xl = {xl} \n Xu = {xu} \n Root = {xr} \n Relative Error = {ea} \n fxr= {fxr}")
+                stepCounter += 1
                 if (ea < self.es):
                     self.step_strings.append(f"Final Result \n =========== \n\n"
                                              f" Root after iteration {i} = {xr}\n"
