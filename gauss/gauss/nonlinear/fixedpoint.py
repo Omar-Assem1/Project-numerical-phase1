@@ -130,7 +130,11 @@ class FixedPointMethod:
 
                 g_val = self.round_sig(x_new_raw) if math.isfinite(x_new_raw) else x_new_raw
 
-                sig_figs = self.count_significant_figures(x_new, x_old)
+                # Calculate significant figures with exact solution check
+                if rel_error == 0:
+                    sig_figs = 15  # Exact solution
+                else:
+                    sig_figs = self.count_significant_figures(x_new, x_old)
 
                 x_old_rounded = self.round_sig(x_old)
                 x_new_rounded = self.round_sig(x_new)
@@ -169,6 +173,19 @@ class FixedPointMethod:
                     self.relative_error = rel_error
                     self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% <= {self.epsilon} AND {sig_figs} >= {self.significant_figures} sig figs")
                     break
+
+                # Check for stagnation (relative error not improving and good precision achieved)
+                if i >= 10 and sig_figs >= self.significant_figures:
+                    # Check if relative error has been constant for several iterations
+                    if len(self.iteration_history) >= 5:
+                        last_5_errors = [self.iteration_history[-j]['relative_error'] for j in range(1, 6)]
+                        if all(abs(err - rel_error) < 1e-10 for err in last_5_errors):
+                            self.converged = True
+                            self.root = x_new_rounded
+                            self.iterations = i + 1
+                            self.relative_error = rel_error
+                            self.step_strings.append(f"✓ Converged! Numerical precision limit reached with {sig_figs} >= {self.significant_figures} sig figs")
+                            break
 
                 if i > 5 and abs(x_new) > 1e10:
                     self.error_message = "Method diverging (values too large)"

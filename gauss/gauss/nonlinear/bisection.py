@@ -59,15 +59,20 @@ class bisection:
                 xr = self.round_sig((xu + xl) / 2)
                 fxr = self.round_sig(f_expr.subs({self.xsym: xr}))
                 ea = self.round_sig(abs((xr - xr_old) / xr))
-                sig_figs = self.count_significant_figures(xr, xr_old)
-                self.significant_figures = sig_figs  # Store the last computed significant figures
-                xr_old = xr
                 if (fxl * fxr < 0):
                     xu = xr
                 elif (fxl * fxr == 0):
                     ea = 0
                 else:
                     xl = xr
+                
+                # Calculate significant figures after adjusting ea
+                if ea == 0:
+                    sig_figs = 15  # Exact solution
+                else:
+                    sig_figs = self.count_significant_figures(xr, xr_old)
+                self.significant_figures = sig_figs  # Store the last computed significant figures
+                xr_old = xr
                 self.xr = xr
                 self.step_strings.append(f"Step {stepCounter}, iteration {i} \n =========== \n\n "
                                          f"Xl = {xl} \n Xu = {xu} \n Root = {xr} \n Relative Error = {ea} \n fxr= {fxr} \n Significant figures = {sig_figs}")

@@ -150,7 +150,12 @@ class NewtonRaphsonMethod:
                 # Calculate errors
                 rel_error = self.calculate_relative_error(x_new, x_old)
                 f_new_val = self.evaluate_function(self.f, x_new)
-                sig_figs = self.count_significant_figures(x_new, x_old)
+                
+                # Calculate significant figures with exact solution check
+                if rel_error == 0:
+                    sig_figs = 15  # Exact solution
+                else:
+                    sig_figs = self.count_significant_figures(x_new, x_old)
 
                 # Store iteration data
                 iteration_data = {

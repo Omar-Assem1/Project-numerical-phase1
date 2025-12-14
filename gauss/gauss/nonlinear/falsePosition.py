@@ -75,10 +75,6 @@ class falsePosition:
                 else:
                     ea = 0
 
-                sig_figs = self.count_significant_figures(xr, xr_old)
-                self.significant_figures = sig_figs  # Store the last computed significant figures
-                xr_old = xr
-
                 test_product = fxl * fxr
 
                 if (test_product < 0):
@@ -89,6 +85,14 @@ class falsePosition:
                     fxl = fxr
                 else:
                     ea = 0
+
+                # Calculate significant figures after adjusting ea
+                if ea == 0:
+                    sig_figs = 15  # Exact solution
+                else:
+                    sig_figs = self.count_significant_figures(xr, xr_old)
+                self.significant_figures = sig_figs  # Store the last computed significant figures
+                xr_old = xr
 
                 self.xr = xr
 
