@@ -40,9 +40,9 @@ class falsePosition:
             print("Regula Falsi Fails")
             self.step_strings.append(
                 f"Step {stepCounter} \n =========== \n\n Regula Falsi Fails: Initial guesses do not bracket the root.")
-            raise Exception("Regula Falsi Fails")
+            raise Exception("False Position Fails: The product of F(Xl)*F(Xu) > 0")
         else:
-            xr_old = xl  # Initialize strictly for the first error calculation
+            xr_old = xl
 
             for i in range(1, self.imax + 1):
                 stepCounter += 1

@@ -11,7 +11,7 @@ class ModifiedNewtonRaphsonMethod:
 
         self.equation_str = equation_str
         self.x0 = initial_guess
-        self.multiplicity = multiplicity  # momkn nzwdha ya mandobna
+        self.multiplicity = multiplicity  # momkn nzwdha ya mandobna ##Done ya 2lb mndobna
         self.epsilon = epsilon
         self.max_iterations = max_iterations
         self.significant_figures = significant_figures if significant_figures is not None else precision

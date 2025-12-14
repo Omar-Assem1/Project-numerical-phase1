@@ -206,11 +206,14 @@ def plot():
         method = data.get('method')
         function = data.get('equation')
         function = function.replace("^", "**")
+        g_equation = data.get('gEquation', '')
+        if g_equation:
+            g_equation = g_equation.replace("^", "**")
 
         if method == 'fixed-point':
-            return jsonify({'plotImage': plotter.get_plot_base64(function, True)})
+            return jsonify({'plotImage': plotter.get_plot_base64(g_equation.lower(), True)})
         else:
-            return jsonify({'plotImage': plotter.get_plot_base64(function)})
+            return jsonify({'plotImage': plotter.get_plot_base64(function.lower())})
     except Exception as e:
         return jsonify({'error': f'Couldn\'t Plot: {str(e)}'}), 500
 
@@ -222,7 +225,6 @@ def nonlinear_solve():
         data = request.get_json()
         method = data.get('method')
         equation = data.get('equation')
-
         # Replace ^ with ** for Python evaluation
         equation = equation.replace("^", "**")
 

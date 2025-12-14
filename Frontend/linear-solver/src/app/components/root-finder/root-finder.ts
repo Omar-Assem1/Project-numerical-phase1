@@ -24,13 +24,15 @@ export class RootFinderComponent implements OnInit, OnDestroy {
   eps: number = 0.00001;
   maxIterations: number = 50;
   stepByStep: boolean = true;
+  multiplicity: number = 1;
+  useMultiplicity: boolean = false;
 
   // Results
   result: RootFindingResponse | null = null;
   steps: string[] = [];
   currentStep: number = 0;
   loading: boolean = false;
-    errorMessage: string = '';
+  errorMessage: string = '';
 
   // Plot
   plotImage: string | null = null;
@@ -94,17 +96,17 @@ export class RootFinderComponent implements OnInit, OnDestroy {
       precision: this.precision,
       eps: this.eps,
       maxIterations: this.maxIterations,
-      stepByStep: this.stepByStep
+      stepByStep: this.stepByStep,
+      multiplicity: (this.method === 'modified-newton' && this.useMultiplicity) ? this.multiplicity : undefined
     };
 
-    // Add method-specific parameters
     if (this.requiresInterval()) {
       payload.xLower = this.xLower;
       payload.xUpper = this.xUpper;
     } else if (this.requiresSingleGuess()) {
       payload.x0 = this.x0;
-      if (this.method === 'fixed-point' && this.gEquation) {  // ADD THIS
-        payload.gEquation = this.gEquation;                    // ADD THIS
+      if (this.method === 'fixed-point' && this.gEquation) {
+        payload.gEquation = this.gEquation;
       }
     } else if (this.requiresTwoGuesses()) {
       payload.x0 = this.x0;
@@ -138,7 +140,8 @@ export class RootFinderComponent implements OnInit, OnDestroy {
 
     const payload: PlotRequest = {
       method: this.method,
-      equation: this.equation
+      equation: this.equation,
+      gEquation: this.gEquation
     };
 
     this.apiService.getPlot(payload).subscribe({
@@ -220,6 +223,8 @@ export class RootFinderComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.plotImage = null;
     this.plotErrorMessage = '';
+    this.multiplicity = 1;
+    this.useMultiplicity = false;
     this.stopSimulation();
   }
 }

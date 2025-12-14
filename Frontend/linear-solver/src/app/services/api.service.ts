@@ -30,6 +30,7 @@ export interface RootFindingRequest {
   eps: number;
   maxIterations: number;
   stepByStep?: boolean;
+  multiplicity?: number;
 }
 
 export interface SolveResponse {
@@ -54,6 +55,7 @@ export interface RootFindingResponse {
 export interface PlotRequest {
   method: string;
   equation: string;
+  gEquation: string;
 }
 
 export interface PlotResponse {

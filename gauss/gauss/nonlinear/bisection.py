@@ -36,7 +36,7 @@ class bisection:
         if (fxl * fxu > 0):
             print("Bisection Fails")
             self.step_strings.append(f"Step {stepCounter} \n =========== \n\n Bisection Fails")
-            raise Exception("Bisection Fails")
+            raise Exception("Bisection Fails: The product of F(Xl)*F(Xu) > 0")
         else:
             xr_old = xl
             for i in range(1, self.imax):
