@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import time
+import math
 
 # Import your existing solver modules
 from Itrativemethods.ItrativeMethods import ItrativeMethods
@@ -246,7 +247,7 @@ def nonlinear_solve():
         steps = []
         approximateError = None
         iterations = 0
-        significant_figures = None
+        significant_figures = precision  # Default to precision value
 
         if method == 'bisection':
             bi = bisection(equation, xLower, xUpper, epsilon, maxIterations, precision)
@@ -254,6 +255,7 @@ def nonlinear_solve():
             steps = bi.step_strings
             approximateError = bi.approximateError
             iterations = bi.iterations
+            significant_figures = bi.getSignificantFigures()
 
         elif method == 'false-position':
             fs = falsePosition(equation, xLower, xUpper, epsilon, maxIterations, precision)
@@ -261,6 +263,7 @@ def nonlinear_solve():
             steps = fs.step_strings
             approximateError = fs.approximateError
             iterations = fs.iterations
+            significant_figures = fs.getSignificantFigures()
 
         elif method == 'fixed-point':
             fp = FixedPointMethod(
@@ -326,6 +329,7 @@ def nonlinear_solve():
             steps = sec.step_strings
             approximateError = sec.approximateError
             iterations = sec.iterations
+            significant_figures = sec.getSignificantFigures()
 
         else:
             return jsonify({'error': f'Method {method} not supported'}), 400

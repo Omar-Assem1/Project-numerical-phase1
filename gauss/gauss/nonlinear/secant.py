@@ -2,6 +2,7 @@ import numpy as np
 import sympy as sy
 from sympy import Symbol
 from decimal import Context, Decimal
+import math
 
 
 class Secant:
@@ -18,6 +19,7 @@ class Secant:
         self.approximateError = None
         self.converged = False
         self.root = None
+        self.significant_figures = 0
 
     def round_sig(self, x):
         """Round number to specified precision using significant figures."""
@@ -38,6 +40,18 @@ class Secant:
         if x_new == 0:
             return float('inf')
         return self.round_sig(abs(x_new - x_old) / abs(x_new))
+
+    def count_significant_figures(self, x_new, x_old):
+        """Count correct significant figures."""
+        if x_new == 0:
+            return 0
+        rel_error = abs((x_new - x_old) / x_new)
+        if rel_error == 0:
+            return 15
+        if rel_error < 1e-10:
+            return 10
+        n = 2 - math.log10(2 * rel_error)
+        return max(0, int(n))
 
     def solve(self):
         """Solve using Secant method and return the root."""
@@ -65,8 +79,9 @@ class Secant:
             x_new = x1 - f1 * (x1 - x0) / (f1 - f0)
             x_new = self.round_sig(x_new)
 
-            # Calculate relative error
+            # Calculate relative error and significant figures
             re = self.relative_error(x_new, x1)
+            sig_figs = self.count_significant_figures(x_new, x1)
 
             # Store iteration details
             step = (
@@ -77,12 +92,14 @@ class Secant:
                 f"  f(x_i) = {f1}\n"
                 f"  x_{{i+1}} = {x1} - {f1} * ({x1} - {x0}) / ({f1} - {f0})\n"
                 f"  x_{{i+1}} = {x_new}\n"
-                f"  Relative Error = |{x_new} - {x1}| / |{x_new}| = {re}"
+                f"  Relative Error = |{x_new} - {x1}| / |{x_new}| = {re}\n"
+                f"  Significant figures = {sig_figs}"
             )
             self.step_strings.append(step)
 
             self.iterations = i + 1
             self.approximateError = re
+            self.significant_figures = sig_figs  # Store the last computed significant figures
 
             # Check convergence
             if re < self.tol:
@@ -117,3 +134,6 @@ class Secant:
         """Print all solution steps."""
         for line in self.step_strings:
             print(line)
+
+    def getSignificantFigures(self):
+        return self.significant_figures

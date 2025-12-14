@@ -1,6 +1,7 @@
 from decimal import Context
 import sympy as sy
 from sympy import Symbol
+import math
 
 
 class bisection:
@@ -17,12 +18,25 @@ class bisection:
         self.approximateError = 0
         self.xr = None
         self.xsym = Symbol('x')
+        self.significant_figures = 0
 
 
     def round_sig(self,x):
         x_str = str(x)
         ctx = Context(prec=self.precision)
         return float(ctx.create_decimal(x_str).normalize())
+
+    def count_significant_figures(self, x_new, x_old):
+        """Count correct significant figures."""
+        if x_new == 0:
+            return 0
+        rel_error = abs((x_new - x_old) / x_new)
+        if rel_error == 0:
+            return 15
+        if rel_error < 1e-10:
+            return 10
+        n = 2 - math.log10(2 * rel_error)
+        return max(0, int(n))
 
     def solve(self):
         xl = self.xl
@@ -45,6 +59,8 @@ class bisection:
                 xr = self.round_sig((xu + xl) / 2)
                 fxr = self.round_sig(f_expr.subs({self.xsym: xr}))
                 ea = self.round_sig(abs((xr - xr_old) / xr))
+                sig_figs = self.count_significant_figures(xr, xr_old)
+                self.significant_figures = sig_figs  # Store the last computed significant figures
                 xr_old = xr
                 if (fxl * fxr < 0):
                     xu = xr
@@ -54,7 +70,7 @@ class bisection:
                     xl = xr
                 self.xr = xr
                 self.step_strings.append(f"Step {stepCounter}, iteration {i} \n =========== \n\n "
-                                         f"Xl = {xl} \n Xu = {xu} \n Root = {xr} \n Relative Error = {ea} \n fxr= {fxr}")
+                                         f"Xl = {xl} \n Xu = {xu} \n Root = {xr} \n Relative Error = {ea} \n fxr= {fxr} \n Significant figures = {sig_figs}")
                 stepCounter += 1
                 if (ea < self.es):
                     self.step_strings.append(f"Final Result \n =========== \n\n"
@@ -71,3 +87,5 @@ class bisection:
         return self.approximateError
     def getIterations(self):
         return self.iterations
+    def getSignificantFigures(self):
+        return self.significant_figures
