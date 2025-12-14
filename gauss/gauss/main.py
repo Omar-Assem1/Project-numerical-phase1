@@ -332,6 +332,11 @@ def nonlinear_solve():
 
         execution_time = (time.time() - start_time) * 1000
 
+        # Handle infinity and NaN values for JSON serialization
+        if approximateError is not None:
+            if approximateError == float('inf') or approximateError != approximateError:  # inf or NaN
+                approximateError = None
+
         response = {
             'root': solution,
             'iterations': iterations,
