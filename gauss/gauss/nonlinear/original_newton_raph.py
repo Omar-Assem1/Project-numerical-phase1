@@ -119,6 +119,17 @@ class NewtonRaphsonMethod:
                 f_val = self.evaluate_function(self.f, x_old)
                 f_prime_val = self.evaluate_function(self.f_prime, x_old)
 
+                # Check if this is the root
+                if abs(f_val) < 1e-12:
+                    self.error_message = (
+                        f"this is the root = {x_old:.{self.significant_figures}f}. "
+                        "f(x)=zero"
+                    )
+                    self.step_strings.append(self.error_message)
+                    self.root = x_old
+                    self.iterations = i
+                    break
+
                 # Check if derivative is zero
                 if abs(f_prime_val) < 1e-12:
                     self.error_message = (
