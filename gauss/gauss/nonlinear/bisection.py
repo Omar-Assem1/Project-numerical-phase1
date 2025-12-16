@@ -68,7 +68,7 @@ class bisection:
                 
                 # Calculate significant figures after adjusting ea
                 if ea == 0:
-                    sig_figs = 15  # Exact solution
+                    sig_figs = self.precision  # Use precision when exact solution found
                 else:
                     sig_figs = self.count_significant_figures(xr, xr_old)
                 self.significant_figures = sig_figs  # Store the last computed significant figures

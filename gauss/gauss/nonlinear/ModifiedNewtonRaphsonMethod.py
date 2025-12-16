@@ -69,7 +69,7 @@ class ModifiedNewtonRaphsonMethod:
 
         rel_error = abs((x_new - x_old) / x_new)
         if rel_error == 0:
-            return 15  # Maximum precision for float
+            return self.significant_figures  # Use precision when exact solution found
 
         # Significant figures based on relative error
         if rel_error < 1e-10:

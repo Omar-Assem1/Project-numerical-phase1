@@ -153,7 +153,7 @@ class NewtonRaphsonMethod:
                 
                 # Calculate significant figures with exact solution check
                 if rel_error == 0:
-                    sig_figs = 15  # Exact solution
+                    sig_figs = self.significant_figures  # Use precision when exact solution found
                 else:
                     sig_figs = self.count_significant_figures(x_new, x_old)
 

@@ -82,7 +82,7 @@ class Secant:
             # Calculate relative error and significant figures
             re = self.relative_error(x_new, x1)
             if re == 0:
-                sig_figs = 15  # Exact solution
+                sig_figs = self.precision  # Use precision when exact solution found
             else:
                 sig_figs = self.count_significant_figures(x_new, x1)
 
