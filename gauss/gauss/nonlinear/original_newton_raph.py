@@ -123,6 +123,15 @@ class NewtonRaphsonMethod:
 
 
 
+                # Check if we found the exact root
+                if f_val == 0.0:
+                    self.converged = True
+                    self.root = x_old
+                    self.iterations = i
+                    self.relative_error = 0
+                    self.step_strings.append(f"✓ Exact root found! f(x) = 0")
+                    break
+
                 # Check if derivative is zero (only for truly zero derivatives)
                 if f_prime_val == 0.0:
                     self.error_message = (
