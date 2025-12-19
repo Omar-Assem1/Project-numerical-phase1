@@ -121,16 +121,7 @@ class NewtonRaphsonMethod:
                 f_val = self.evaluate_function(self.f, x_old)
                 f_prime_val = self.evaluate_function(self.f_prime, x_old)
 
-                # Check if this is the root
-                if abs(f_val) < 1e-12:
-                    self.error_message = (
-                        f"this is the root = {x_old:.{self.significant_figures}f}. "
-                        "f(x)=zero"
-                    )
-                    self.step_strings.append(self.error_message)
-                    self.root = x_old
-                    self.iterations = i
-                    break
+
 
                 # Check if derivative is zero
                 if abs(f_prime_val) < 1e-12:
@@ -153,9 +144,7 @@ class NewtonRaphsonMethod:
                 rel_error = self.calculate_relative_error(x_new, x_old)
                 f_new_val = self.evaluate_function(self.f, x_new)
 
-                # If function value is zero, set relative error to 0
-                if abs(f_new_val) < 1e-12:
-                    rel_error = 0
+
 
                 # Store iteration data
                 iteration_data = {
@@ -201,14 +190,7 @@ class NewtonRaphsonMethod:
                     self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% <= {self.epsilon}%")
                     break
 
-                # Check if function value is close to zero
-                if abs(f_new_val) < 1e-12:
-                    self.converged = True
-                    self.root = x_new
-                    self.iterations = i + 1
-                    self.relative_error = 0  # Set to 0 when exact root found
-                    self.step_strings.append(f"✓ Converged! f(x) ≈ 0")
-                    break
+
 
                 x_old = x_new
 

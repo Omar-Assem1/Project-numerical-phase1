@@ -54,7 +54,23 @@ class bisection:
             self.step_strings.append(f"Step {stepCounter} \n =========== \n\n Bisection Fails")
             raise Exception("Bisection Fails: The product of F(Xl)*F(Xu) > 0")
         elif (fxl * fxu == 0):
-            raise Exception("Bisection Fails: The product of F(Xl) * F(Xu) = 0")
+            # One of the bounds is exactly the root
+            if fxl == 0:
+                self.xr = xl
+                self.approximateError = 0
+                self.iterations = 0
+                self.significant_figures = self.precision
+                self.step_strings.append(f"Step {stepCounter} \n =========== \n\n "
+                                         f"Exact root found at lower bound: xl = {xl} \n f(xl) = {fxl}")
+                return xl
+            else:  # fxu == 0
+                self.xr = xu
+                self.approximateError = 0
+                self.iterations = 0
+                self.significant_figures = self.precision
+                self.step_strings.append(f"Step {stepCounter} \n =========== \n\n "
+                                         f"Exact root found at upper bound: xu = {xu} \n f(xu) = {fxu}")
+                return xu
         else:
             xr_old = xl
             for i in range(1, self.imax):
