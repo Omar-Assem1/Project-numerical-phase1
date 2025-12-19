@@ -123,8 +123,8 @@ class NewtonRaphsonMethod:
 
 
 
-                # Check if derivative is zero
-                if abs(f_prime_val) < 1e-12:
+                # Check if derivative is zero (only for truly zero derivatives)
+                if f_prime_val == 0.0:
                     self.error_message = (
                         f"Derivative is zero at x = {x_old:.{self.significant_figures}g}. "
                         "Cannot continue with Newton-Raphson method."
@@ -132,6 +132,8 @@ class NewtonRaphsonMethod:
                     self.step_strings.append(self.error_message)
                     self.root = x_old
                     self.iterations = i
+                    # Set relative error to None since we can't calculate it
+                    self.relative_error = None
                     break
 
                 # Newton-Raphson formula: x_new = x_old - f(x_old)/f'(x_old)

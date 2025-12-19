@@ -159,8 +159,8 @@ class ModifiedNewtonRaphsonMethod:
                 
 
 
-                # Check if derivative is zero
-                if abs(f_prime_val) < 1e-12:
+                # Check if derivative is zero (only for truly zero derivatives)
+                if f_prime_val == 0.0:
                     self.error_message = (
                         f"Derivative is zero at x = {x_old:.{self.precision}f}. "
                         "Cannot continue with Modified Newton-Raphson method."
@@ -168,6 +168,8 @@ class ModifiedNewtonRaphsonMethod:
                     self.step_strings.append(self.error_message)
                     self.root = x_old
                     self.iterations = i
+                    # Set relative error to None since we can't calculate it
+                    self.relative_error = None
                     break
 
                 if use_known_multiplicity:
@@ -178,7 +180,7 @@ class ModifiedNewtonRaphsonMethod:
                     f_double_prime_val = self.evaluate_function(self.f_double_prime, x_old)
                     
                     denominator = f_prime_val - (f_val * f_double_prime_val / f_prime_val)
-                    if abs(denominator) < 1e-12:
+                    if denominator == 0.0:
                         self.error_message = (
                             f"Denominator is zero at x = {x_old:.{self.precision}f}. "
                             "Cannot continue."
@@ -186,6 +188,8 @@ class ModifiedNewtonRaphsonMethod:
                         self.step_strings.append(self.error_message)
                         self.root = x_old
                         self.iterations = i
+                        # Set relative error to None since we can't calculate it
+                        self.relative_error = None
                         break
                     
                     x_new = x_old - (f_val / denominator)
@@ -305,8 +309,7 @@ class ModifiedNewtonRaphsonMethod:
                 f"f(root) = {self.evaluate_function(self.f, self.root):.{self.precision}e}"
             ])
         else:
-            if (not (abs(f_val) < 1e-12)):
-                results.append("✗ Method did not converge")
+            results.append("✗ Method did not converge")
             if self.root:
                 results.append(f"Last approximation: {self.root:.{self.precision}f}")
 
