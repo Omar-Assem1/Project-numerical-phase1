@@ -12,7 +12,7 @@ class NewtonRaphsonMethod:
 
         self.equation_str = equation_str
         self.x0 = initial_guess
-        self.epsilon = epsilon * 100  # Convert to percentage to match relative error calculation
+        self.epsilon = epsilon * 100  # Convert decimal to percentage (0.00001 -> 0.001%)
         self.max_iterations = max_iterations
         self.significant_figures = significant_figures
 
@@ -71,16 +71,18 @@ class NewtonRaphsonMethod:
         if x_new == 0:
             return 0
 
-        rel_error = abs((x_new - x_old) / x_new)
-        if rel_error == 0:
+        rel_error_decimal = abs((x_new - x_old) / x_new)
+        if rel_error_decimal == 0:
             return 15  # Maximum precision for float (was inf)
 
         # Significant figures based on relative error
         # |εa| = (0.5 × 10^(2-n)) %
-        if rel_error < 1e-10:
+        if rel_error_decimal < 1e-10:
             return 10
 
-        n = 2 - math.log10(2 * rel_error)
+        # Use percentage value in the formula: rel_error_percentage = rel_error_decimal * 100
+        rel_error_percentage = rel_error_decimal * 100
+        n = 2 - math.log10(2 * rel_error_percentage)
         return max(0, int(n))
 
     def solve(self, show_steps=False):
@@ -150,12 +152,10 @@ class NewtonRaphsonMethod:
                 # Calculate errors
                 rel_error = self.calculate_relative_error(x_new, x_old)
                 f_new_val = self.evaluate_function(self.f, x_new)
-                
-                # Calculate significant figures with exact solution check
-                if rel_error == 0:
-                    sig_figs = self.significant_figures  # Use precision when exact solution found
-                else:
-                    sig_figs = self.count_significant_figures(x_new, x_old)
+
+                # If function value is zero, set relative error to 0
+                if abs(f_new_val) < 1e-12:
+                    rel_error = 0
 
                 # Store iteration data
                 iteration_data = {
@@ -165,8 +165,7 @@ class NewtonRaphsonMethod:
                     'f_prime(x_old)': f_prime_val,
                     'x_new': x_new,
                     'f(x_new)': f_new_val,
-                    'relative_error': rel_error,
-                    'significant_figures': sig_figs
+                    'relative_error': rel_error
                 }
                 self.iteration_history.append(iteration_data)
 
@@ -178,8 +177,7 @@ class NewtonRaphsonMethod:
                     f"  f'(x_{i}) = {f_prime_val:.{self.significant_figures}g}",
                     f"  x_{i + 1} = x_{i} - f(x_{i})/f'(x_{i}) = {x_new:.{self.significant_figures}g}",
                     f"  f(x_{i + 1}) = {f_new_val:.{self.significant_figures}g}",
-                    f"  |εₐ| = {rel_error:.6f}%",
-                    f"  Significant figures: {sig_figs}"
+                    f"  |εₐ| = {rel_error:.6f}%"
                 ]
                 self.step_strings.append("\n".join(iteration_step))
 
@@ -194,16 +192,13 @@ class NewtonRaphsonMethod:
                     print(f"  Significant figures: {sig_figs}")
                     print()
 
-                # Convergence checks - both conditions must be satisfied for strict epsilon accuracy
-                epsilon_satisfied = rel_error <= self.epsilon
-                precision_satisfied = self.significant_figures and sig_figs >= self.significant_figures
-                
-                if epsilon_satisfied and precision_satisfied:
+                # Simple convergence check - stop when error <= epsilon OR max iterations
+                if rel_error <= self.epsilon:
                     self.converged = True
                     self.root = x_new
                     self.iterations = i + 1
                     self.relative_error = rel_error
-                    self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% <= {self.epsilon} AND {sig_figs} >= {self.significant_figures} sig figs")
+                    self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% <= {self.epsilon}%")
                     break
 
                 # Check if function value is close to zero
@@ -211,7 +206,7 @@ class NewtonRaphsonMethod:
                     self.converged = True
                     self.root = x_new
                     self.iterations = i + 1
-                    self.relative_error = rel_error
+                    self.relative_error = 0  # Set to 0 when exact root found
                     self.step_strings.append(f"✓ Converged! f(x) ≈ 0")
                     break
 
@@ -233,6 +228,17 @@ class NewtonRaphsonMethod:
             self.step_strings.append(self.error_message)
 
         self.execution_time = time.time() - start_time
+
+        # Calculate significant figures at the END
+        if self.relative_error == 0:
+            final_sig_figs = self.significant_figures  # Use precision when exact solution found
+        elif len(self.iteration_history) >= 2:
+            # Calculate from last two iterations
+            last_x = self.iteration_history[-1]['x_new']
+            prev_x = self.iteration_history[-2]['x_new']
+            final_sig_figs = self.count_significant_figures(last_x, prev_x)
+        else:
+            final_sig_figs = self.significant_figures
 
         # Add final results as a single step
         results = [
@@ -259,10 +265,7 @@ class NewtonRaphsonMethod:
         if self.relative_error is not None:
             results.append(f"Approximate relative error: {self.relative_error:.6f}%")
 
-        if self.converged and len(self.iteration_history) >= 1:
-            sig_figs = self.iteration_history[-1]['significant_figures']
-            results.append(f"Significant figures: {sig_figs}")
-
+        results.append(f"Significant figures: {final_sig_figs}")
         results.append(f"Execution time: {self.execution_time:.6f} seconds")
         results.append("=" * 70)
 
@@ -272,15 +275,27 @@ class NewtonRaphsonMethod:
 
     def get_results(self):
         """Return results as a dictionary."""
+        # Calculate final significant figures for return
+        if self.relative_error == 0:
+            final_sig_figs = self.significant_figures  # Use precision when exact solution found
+        elif len(self.iteration_history) >= 2:
+            # Calculate from last two iterations
+            last_x = self.iteration_history[-1]['x_new']
+            prev_x = self.iteration_history[-2]['x_new']
+            final_sig_figs = self.count_significant_figures(last_x, prev_x)
+        else:
+            final_sig_figs = self.significant_figures
+            
         return {
             'root': self.root,
             'iterations': self.iterations,
-            'relative_error': self.relative_error,
+            'relative_error': round(self.relative_error, 6) if self.relative_error is not None else None,
             'execution_time': self.execution_time,
             'converged': self.converged,
             'error_message': self.error_message,
             'iteration_history': self.iteration_history,
-            'step_strings': self.step_strings
+            'step_strings': self.step_strings,
+            'significant_figures': final_sig_figs
         }
 
     def print_results(self):

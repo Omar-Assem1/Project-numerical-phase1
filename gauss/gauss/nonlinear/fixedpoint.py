@@ -11,7 +11,7 @@ class FixedPointMethod:
 
         self.g_equation_str = g_equation_str
         self.x0 = initial_guess
-        self.epsilon = epsilon * 100  # Convert to percentage to match relative error calculation
+        self.epsilon = epsilon * 100  # Convert decimal to percentage (0.00001 -> 0.001%)
         self.max_iterations = max_iterations
         self.significant_figures = significant_figures
 
@@ -65,12 +65,14 @@ class FixedPointMethod:
         """Count correct significant figures."""
         if x_new == 0:
             return 0
-        rel_error = abs((x_new - x_old) / x_new)
-        if rel_error == 0:
+        rel_error_decimal = abs((x_new - x_old) / x_new)
+        if rel_error_decimal == 0:
             return 15
-        if rel_error < 1e-10:
+        if rel_error_decimal < 1e-10:
             return 10
-        n = 2 - math.log10(2 * rel_error)
+        # Use percentage value in the formula: rel_error_percentage = rel_error_decimal * 100
+        rel_error_percentage = rel_error_decimal * 100
+        n = 2 - math.log10(2 * rel_error_percentage)
         return max(0, int(n))
 
     def check_convergence_condition(self):
@@ -131,14 +133,6 @@ class FixedPointMethod:
 
                 g_val = self.round_sig(x_new_raw) if math.isfinite(x_new_raw) else x_new_raw
 
-                # Calculate significant figures with exact solution check
-                if rel_error == 0:
-                    sig_figs = self.significant_figures  # Use precision when exact solution found
-                else:
-                    sig_figs = self.count_significant_figures(x_new, x_old)
-                
-                self.last_significant_figures = sig_figs  # Store the last computed significant figures
-
                 x_old_rounded = self.round_sig(x_old)
                 x_new_rounded = self.round_sig(x_new)
 
@@ -147,8 +141,7 @@ class FixedPointMethod:
                     'x_old': x_old_rounded,
                     'x_new': x_new_rounded,
                     'g(x_old)': g_val,
-                    'relative_error': rel_error,
-                    'significant_figures': sig_figs
+                    'relative_error': rel_error
                 }
                 self.iteration_history.append(iteration_data)
 
@@ -157,37 +150,40 @@ class FixedPointMethod:
                     f"  x_old = {x_old_rounded}",
                     f"  x_new = g(x_old) = {x_new_rounded}",
                     f"  g(x_old) = {g_val}" if math.isfinite(g_val) else "  g(x_old) = undefined",
-                    f"  |εₐ| = {rel_error:.6f}%" if math.isfinite(rel_error) else "  |εₐ| = N/A",
-                    f"  Significant figures: {sig_figs}"
+                    f"  |εₐ| = {rel_error:.6f}%" if math.isfinite(rel_error) else "  |εₐ| = N/A"
                 ]
                 self.step_strings.append("\n".join(iteration_step))
 
                 if show_steps:
                     print("\n".join(iteration_step))
 
-                # Convergence checks - both conditions must be satisfied for strict epsilon accuracy
-                epsilon_satisfied = math.isfinite(rel_error) and rel_error <= self.epsilon
-                precision_satisfied = self.significant_figures and sig_figs >= self.significant_figures
-                
-                if epsilon_satisfied and precision_satisfied:
+                # Simple convergence check - stop when error <= epsilon
+                if math.isfinite(rel_error) and rel_error <= self.epsilon:
                     self.converged = True
                     self.root = x_new_rounded
                     self.iterations = i + 1
                     self.relative_error = rel_error
-                    self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% <= {self.epsilon} AND {sig_figs} >= {self.significant_figures} sig figs")
+                    self.step_strings.append(f"✓ Converged! Error {rel_error:.6f}% <= {self.epsilon}%")
                     break
 
-                # Check for stagnation (relative error not improving and good precision achieved)
-                if i >= 10 and sig_figs >= self.significant_figures:
-                    # Check if relative error has been constant for several iterations
-                    if len(self.iteration_history) >= 5:
-                        last_5_errors = [self.iteration_history[-j]['relative_error'] for j in range(1, 6)]
-                        if all(abs(err - rel_error) < 1e-10 for err in last_5_errors):
+                # Check for oscillation (alternating between two values)
+                if i >= 3:  # Need at least 3 iterations to detect pattern
+                    # Check if we're oscillating between two values with same error
+                    if len(self.iteration_history) >= 3:
+                        last_3_errors = [self.iteration_history[-j]['relative_error'] for j in range(1, 4)]
+                        last_3_values = [self.iteration_history[-j]['x_new'] for j in range(1, 4)]
+                        
+                        # Check if error is constant and values are alternating
+                        if (abs(last_3_errors[0] - last_3_errors[1]) < 1e-10 and 
+                            abs(last_3_errors[1] - last_3_errors[2]) < 1e-10 and
+                            abs(last_3_values[0] - last_3_values[2]) < 1e-10 and
+                            abs(last_3_values[0] - last_3_values[1]) > 1e-10):
+                            
                             self.converged = True
                             self.root = x_new_rounded
                             self.iterations = i + 1
                             self.relative_error = rel_error
-                            self.step_strings.append(f"✓ Converged! Numerical precision limit reached with {sig_figs} >= {self.significant_figures} sig figs")
+                            self.step_strings.append(f"✓ Converged! Oscillation detected - method reached numerical precision limit")
                             break
 
                 if i > 5 and abs(x_new) > 1e10:
@@ -219,6 +215,17 @@ class FixedPointMethod:
             self.step_strings.append(self.error_message)
 
         self.execution_time = self.round_sig(time.time() - start_time)
+
+        # Calculate final significant figures at the END
+        if self.relative_error == 0:
+            self.last_significant_figures = self.significant_figures  # Use precision when exact solution
+        elif len(self.iteration_history) >= 2:
+            # Calculate from last two iterations
+            last_x = self.iteration_history[-1]['x_new']
+            prev_x = self.iteration_history[-2]['x_new']
+            self.last_significant_figures = self.count_significant_figures(last_x, prev_x)
+        else:
+            self.last_significant_figures = self.significant_figures
 
         # Final results
         results = ["", "=" * 70, "RESULTS", "=" * 70]
@@ -256,7 +263,7 @@ class FixedPointMethod:
         return {
             'root': self.round_sig(self.root) if self.root is not None else self.round_sig(self.x0),
             'iterations': self.iterations,
-            'relative_error': self.round_sig(self.relative_error) if self.relative_error is not None else None,
+            'relative_error': round(self.relative_error, 6) if self.relative_error is not None else None,
             'execution_time': self.round_sig(self.execution_time),
             'converged': self.converged,
             'error_message': self.error_message,

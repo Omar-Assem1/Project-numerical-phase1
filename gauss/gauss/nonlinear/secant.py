@@ -6,11 +6,11 @@ import math
 
 
 class Secant:
-    def __init__(self, f, x0, x1, tol, maxiter, precision):
+    def __init__(self, f, x0, x1, tol=0.00001, maxiter=50, precision=5):
         self.f_expr = sy.sympify(f)
         self.x0 = x0
         self.x1 = x1
-        self.tol = tol
+        self.tol = tol * 100  # Convert decimal to percentage (0.00001 -> 0.001%)
         self.maxiter = maxiter
         self.precision = precision
         self.xsym = Symbol('x')
@@ -39,18 +39,20 @@ class Secant:
         """Calculate relative error between successive iterations."""
         if x_new == 0:
             return float('inf')
-        return self.round_sig(abs(x_new - x_old) / abs(x_new))
+        return self.round_sig(abs(x_new - x_old) / abs(x_new) * 100)  # Convert to percentage
 
     def count_significant_figures(self, x_new, x_old):
         """Count correct significant figures."""
         if x_new == 0:
             return 0
-        rel_error = abs((x_new - x_old) / x_new)
-        if rel_error == 0:
+        rel_error_decimal = abs((x_new - x_old) / x_new)
+        if rel_error_decimal == 0:
             return 15
-        if rel_error < 1e-10:
+        if rel_error_decimal < 1e-10:
             return 10
-        n = 2 - math.log10(2 * rel_error)
+        # Use percentage value in the formula: rel_error_percentage = rel_error_decimal * 100
+        rel_error_percentage = rel_error_decimal * 100
+        n = 2 - math.log10(2 * rel_error_percentage)
         return max(0, int(n))
 
     def solve(self):
@@ -79,12 +81,8 @@ class Secant:
             x_new = x1 - f1 * (x1 - x0) / (f1 - f0)
             x_new = self.round_sig(x_new)
 
-            # Calculate relative error and significant figures
+            # Calculate relative error
             re = self.relative_error(x_new, x1)
-            if re == 0:
-                sig_figs = self.precision  # Use precision when exact solution found
-            else:
-                sig_figs = self.count_significant_figures(x_new, x1)
 
             # Store iteration details
             step = (
@@ -95,38 +93,60 @@ class Secant:
                 f"  f(x_i) = {f1}\n"
                 f"  x_{{i+1}} = {x1} - {f1} * ({x1} - {x0}) / ({f1} - {f0})\n"
                 f"  x_{{i+1}} = {x_new}\n"
-                f"  Relative Error = |{x_new} - {x1}| / |{x_new}| = {re}\n"
-                f"  Significant figures = {sig_figs}"
+                f"  Relative Error = |{x_new} - {x1}| / |{x_new}| = {re}%"
             )
             self.step_strings.append(step)
 
             self.iterations = i + 1
             self.approximateError = re
-            self.significant_figures = sig_figs  # Store the last computed significant figures
 
-            # Check convergence
-            if re < self.tol:
+            # Simple convergence check - stop when error <= tolerance OR max iterations
+            if re <= self.tol:
                 self.step_strings.append(
                     f"\n✓ Convergence achieved!\n"
                     f"Root found: x = {x_new}\n"
                     f"Iterations: {self.iterations}\n"
-                    f"Final relative error: {re}"
+                    f"Final relative error: {re}%"
                 )
                 self.root = x_new
                 self.converged = True
+                
+                # Calculate significant figures at the END
+                if re == 0:
+                    self.significant_figures = self.precision  # Use precision when exact solution found
+                else:
+                    # Use the actual relative error percentage that was calculated
+                    if re < 1e-10:
+                        self.significant_figures = 10
+                    else:
+                        n = 2 - math.log10(2 * re)  # re is already in percentage
+                        self.significant_figures = max(0, int(n))
+                
                 return x_new
 
             # Update for next iteration
             x0 = x1
             x1 = x_new
 
-        # Max iterations reached
+        # Max iterations reached without convergence
         self.step_strings.append(
             f"\n✗ Maximum iterations ({self.maxiter}) reached without convergence.\n"
             f"Last approximation: x = {x1}\n"
-            f"Final relative error: {re}"
+            f"Final relative error: {re}%"
         )
         self.root = x1
+        
+        # Calculate significant figures at the END
+        if re == 0:
+            self.significant_figures = self.precision  # Use precision when exact solution found
+        else:
+            # Use the actual relative error percentage that was calculated
+            if re < 1e-10:
+                self.significant_figures = 10
+            else:
+                n = 2 - math.log10(2 * re)  # re is already in percentage
+                self.significant_figures = max(0, int(n))
+        
         return x1
 
     def get_answer(self):
